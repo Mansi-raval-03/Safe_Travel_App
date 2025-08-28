@@ -41,7 +41,7 @@ dev_dependencies:
   google_maps_flutter: 
   geolocator: 
   url_launcher: 
-  supabase_flutter: 
+  supabase_flutter: ^2.10.0 
   connectivity_plus: 
   flutter_offline: 
   flutter_dotenv:
