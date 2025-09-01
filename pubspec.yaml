@@ -45,6 +45,8 @@ dev_dependencies:
   connectivity_plus: 
   flutter_offline: 
   flutter_dotenv:
+  intl: 
+  provider:
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
