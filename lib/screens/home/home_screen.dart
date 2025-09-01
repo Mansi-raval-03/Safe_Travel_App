@@ -72,9 +72,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     return const Center(child: CircularProgressIndicator());
                   }
                   final items =
-                      snapshot.data as List<Map<String, dynamic>>? ?? [];
-                  if (items.isEmpty)
+                      snapshot.data ?? [];
+                  if (items.isEmpty) {
                     return const Center(child: Text('No SOS yet'));
+                  }
                   return ListView.separated(
                     itemCount: items.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
@@ -83,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       final dt = DateTime.tryParse(
                         row['created_at'] ?? '',
                       )?.toLocal();
-                      final  when;
+                      final  String when;
                       if (dt != null) {
                         when = DateFormat('dd MMM, hh:mm a').format(dt);
                       } else {

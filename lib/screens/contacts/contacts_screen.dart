@@ -4,6 +4,7 @@ import 'package:safe_travel_app/core/services/supabase_service.dart';
 class ContactsScreen extends StatefulWidget {
   const ContactsScreen({super.key});
 
+  @override
   State<ContactsScreen> createState() => _ContactsScreenState();
 }
 
@@ -31,6 +32,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     await _refresh();
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Emergency Contacts')),
@@ -44,9 +46,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
-          final items = snapshot.data as List<Map<String, dynamic>>? ?? [];
-          if (items.isEmpty)
+          final items = snapshot.data ?? [];
+          if (items.isEmpty) {
             return const Center(child: Text('No contacts yet. Tap + to add.'));
+          }
           return ListView.separated(
             itemCount: items.length,
             separatorBuilder: (_, __) => const Divider(height: 1),
