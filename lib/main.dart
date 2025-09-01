@@ -23,7 +23,7 @@ Future<void> main() async {
   runApp(const SafeTravelApp());
 }
 
-class SafeTravelApp extends StatelessWidget {
+class SafeTravelApp extends StatelessWidget { 
   const SafeTravelApp({super.key});
 
   @override
