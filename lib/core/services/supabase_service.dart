@@ -19,10 +19,19 @@ class SupabaseService {
     String? phone,
   }) async {
     try {
-      final res = await _sb.auth.signUp(email: email, password: password);
+      final res = await _sb.auth.signUp(
+        email: email,
+        password: password,
+        // Pass metadata through AuthOptions
+        data: {
+          'full_name': fullName,
+          'phone': phone,
+        },
+      );
+
       final userId = res.user?.id;
 
-      // create profile row for new user
+      // Create profile row for new user
       if (userId != null) {
         await _sb.from('profiles').upsert({
           'id': userId,
@@ -42,8 +51,10 @@ class SupabaseService {
     required String password,
   }) async {
     try {
-      return await _sb.auth
-          .signInWithPassword(email: email, password: password);
+      return await _sb.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
     } catch (e) {
       throw Exception('Sign in failed: $e');
     }
