@@ -1,51 +1,86 @@
 import 'package:flutter/material.dart';
+import 'package:safe_travel_app/screens/Emergency_Assistance/emergency_sssistance_screen.dart';
+import 'package:safe_travel_app/screens/Location/nearby_location_screen.dart';
+import 'package:safe_travel_app/screens/bottom_navigation_bar.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatelessWidget {
+  void _navigateToNearbyMechanics(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => NearbyLocationScreen()));
+  }
 
-  @override
-  State<HomeScreen> createState() => HomeScreenState();
-}
+  void _navigateToEmergencyAssistance(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => EmergencyAssistanceScreen()));
+  }
 
-class HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Safe Travel App')),
-      body: Center(child: Text('Welcome to Safe Travel App!')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: Text('Login'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      decoration: InputDecoration(labelText: 'Username'),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      obscureText: true,
-                      decoration: InputDecoration(labelText: 'Password'),
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: Icon(Icons.navigation),
-                  ),
-                ],
-              );
-            },
-          );
-        },
+      appBar: AppBar(
+        title: Text("Safe Travel App"),
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(right: 15),
+            child: CircleAvatar(child: Icon(Icons.person)),
+          )
+        ],
+        leading: Icon(Icons.shield, color: Colors.blue),
       ),
+      body: Padding(
+        padding: EdgeInsets.all(36),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () => _navigateToEmergencyAssistance(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shadowColor: Colors.redAccent,
+                elevation: 10,
+                fixedSize: Size(150, 150),
+                shape: CircleBorder(),
+                textStyle: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              child: Text('HELP ME'),
+            ),
+            SizedBox(height: 40),
+            ElevatedButton.icon(
+              onPressed: () => _navigateToNearbyMechanics(context),
+              icon: Icon(Icons.build),
+              label: Text('Nearby Mechanics'),
+              style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50)),
+            ),
+            SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {},
+              icon: Icon(Icons.local_shipping),
+              label: Text('Towing Service'),
+              style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50)),
+            ),
+            SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {},
+              icon: Icon(Icons.local_shipping),
+              label: Text('Towing Service'),
+              style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50)),
+            ),
+            SizedBox(height: 25),
+            ElevatedButton.icon(
+              onPressed: () {},
+              icon: Icon(Icons.location_on),
+              label: Text('Share Live Location'),
+              style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50)),
+            ),
+            SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {},
+              icon: Icon(Icons.timer),
+              label: Text('Set Arrival Timer'),
+              style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50)),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavBar(selectedIndex: 0),
     );
   }
 }
