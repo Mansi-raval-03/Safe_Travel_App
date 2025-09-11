@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:safe_travel_app/screens/splash/welcome_screen.dart';
+import 'package:safe_travel_app/screens/home/home_screen.dart';
 
 void main() {
   runApp(SafeTravelApp());
@@ -15,7 +15,7 @@ class SafeTravelApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: WelcomeScreen(),
+      home: HomeScreen(),
     );
   }
 }
