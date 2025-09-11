@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:location/location.dart';
+import 'package:geolocator/geolocator.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
@@ -11,8 +11,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   GoogleMapController? _mapController;
-  LocationData? _currentLocation;
-  final Location _location = Location();
+  Position? _currentPosition;
 
   final LatLng _destination =
       const LatLng(37.42796133580664, -122.085749655962);
@@ -47,28 +46,26 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _initLocation() async {
-    bool serviceEnabled = await _location.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await _location.requestService();
-      if (!serviceEnabled) return;
-    }
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
 
-    final permissionGranted = await _location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      final requestResult = await _location.requestPermission();
-      if (requestResult != PermissionStatus.granted) return;
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
     }
+    if (permission == LocationPermission.deniedForever) return;
 
-    final loc = await _location.getLocation();
+    final pos = await Geolocator.getCurrentPosition();
     if (!mounted) return;
     setState(() {
-      _currentLocation = loc;
+      _currentPosition = pos;
     });
 
-    _location.onLocationChanged.listen((newLoc) {
+    Geolocator.getPositionStream().listen((newPos) {
       if (!mounted) return;
       setState(() {
-        _currentLocation = newLoc;
+        _currentPosition = newPos;
       });
       _updateRoute();
     });
@@ -77,7 +74,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _updateRoute() {
-    if (_currentLocation == null) return;
+    if (_currentPosition == null) return;
     setState(() {
       _polylines.clear();
       _polylines.add(
@@ -86,7 +83,7 @@ class _MapScreenState extends State<MapScreen> {
           color: Colors.blue,
           width: 5,
           points: [
-            LatLng(_currentLocation!.latitude!, _currentLocation!.longitude!),
+            LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
             _destination,
           ],
         ),
@@ -102,13 +99,13 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userLatLng = _currentLocation == null
+    final userLatLng = _currentPosition == null
         ? _destination
-        : LatLng(_currentLocation!.latitude!, _currentLocation!.longitude!);
+        : LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
 
     final Set<Marker> markers = {
       ..._landmarkMarkers,
-      if (_currentLocation != null)
+      if (_currentPosition != null)
         Marker(
           markerId: const MarkerId('user'),
           position: userLatLng,
@@ -127,7 +124,7 @@ class _MapScreenState extends State<MapScreen> {
       appBar: AppBar(
         title: const Text('Safe Travel Map'),
       ),
-      body: _currentLocation == null
+      body: _currentPosition == null
           ? const Center(child: CircularProgressIndicator())
           : GoogleMap(
               initialCameraPosition: CameraPosition(

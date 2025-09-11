@@ -1,11 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:safe_travel_app/screens/bottom_navigation_bar.dart';
+import 'package:safe_travel_app/screens/home/home_screen.dart';
 
 class NearbyLocationScreen extends StatelessWidget {
   final List<Map<String, dynamic>> mechanics = [
-    {'name': 'Roadside Repair Pros', 'status': 'Available', 'distance': '2.5 miles', 'time': '5 min away', 'icon': Icons.build, 'actions': ['Call']},
-    {'name': 'Quick-Fix Auto', 'status': 'Busy', 'distance': '2.5 miles', 'time': '5 min away', 'icon': Icons.build, 'actions': ['Chat']},
-    {'name': 'Mobile Mechanics Hub', 'status': 'Available', 'distance': '2.5 miles', 'time': '5 min away', 'icon': Icons.build, 'actions': ['Chat']},
+    {
+      'name': 'Roadside Repair Pros',
+      'status': 'Available',
+      'distance': '2.5 miles',
+      'time': '5 min away',
+      'icon': Icons.build,
+      'actions': ['Call'],
+    },
+    {
+      'name': 'Quick-Fix Auto',
+      'status': 'Busy',
+      'distance': '2.5 miles',
+      'time': '5 min away',
+      'icon': Icons.build,
+      'actions': ['Chat'],
+    },
+    {
+      'name': 'Mobile Mechanics Hub',
+      'status': 'Available',
+      'distance': '2.5 miles',
+      'time': '5 min away',
+      'icon': Icons.build,
+      'actions': ['Chat'],
+    },
   ];
 
   @override
@@ -20,8 +42,13 @@ class NearbyLocationScreen extends StatelessWidget {
           ),
         ],
         leading: IconButton(
-          icon: Icon(Icons.menu),
-          onPressed: () {},
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => HomeScreen()),
+            );
+          },
         ),
       ),
       bottomNavigationBar: BottomNavBar(selectedIndex: 1),
@@ -46,21 +73,32 @@ class NearbyLocationScreen extends StatelessWidget {
                         Text(mechanic['name']),
                         SizedBox(width: 10),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: mechanic['status'] == 'Available' ? Colors.green : Colors.orange,
+                            color: mechanic['status'] == 'Available'
+                                ? Colors.green
+                                : Colors.orange,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             mechanic['status'],
                             style: TextStyle(color: Colors.white, fontSize: 12),
                           ),
-                        )
+                        ),
                       ],
                     ),
-                    subtitle: Text('${mechanic['time']} - ${mechanic['distance']}'),
+                    subtitle: Text(
+                      '${mechanic['time']} - ${mechanic['distance']}',
+                    ),
                     trailing: ElevatedButton.icon(
-                      icon: Icon(mechanic['actions'][0] == 'Call' ? Icons.call : Icons.chat),
+                      icon: Icon(
+                        mechanic['actions'][0] == 'Call'
+                            ? Icons.call
+                            : Icons.chat,
+                      ),
                       label: Text(mechanic['actions'][0]),
                       onPressed: () {},
                     ),

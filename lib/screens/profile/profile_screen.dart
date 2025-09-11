@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:safe_travel_app/screens/home/home_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -70,7 +71,7 @@ class profileScreen extends State<ProfileScreen> {
                 SizedBox(width: 10),
                 ElevatedButton(
                   onPressed: () {
-                    // Add contact logic
+                    
                   },
                   child: Text('Add Contact'),
                 ),
@@ -79,7 +80,7 @@ class profileScreen extends State<ProfileScreen> {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Save profile data logic
+               Navigator.push(context, MaterialPageRoute(builder: (_) => HomeScreen()));
               },
               style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50)),
               child: Text('Save Profile'),
