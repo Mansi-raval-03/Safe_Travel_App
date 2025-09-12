@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:safe_travel_app/screens/bottom_navigation_bar.dart';
 import 'package:safe_travel_app/screens/home/home_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class profileScreen extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Complete Your Profile")),
+      bottomNavigationBar: BottomNavBar(selectedIndex: 2),
       body: Padding(
         padding: EdgeInsets.all(20),
         child: Column(

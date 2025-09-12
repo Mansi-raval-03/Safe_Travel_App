@@ -32,6 +32,8 @@ class NearbyLocationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Nearby Mechanics'),
@@ -59,52 +61,85 @@ class NearbyLocationScreen extends StatelessWidget {
             color: Colors.grey[300],
             child: Center(child: Text("Map Placeholder")),
           ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: mechanics.length,
-              itemBuilder: (context, index) {
-                final mechanic = mechanics[index];
-                return Card(
-                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  child: ListTile(
-                    leading: Icon(mechanic['icon'], color: Colors.green),
-                    title: Row(
-                      children: [
-                        Text(mechanic['name']),
-                        SizedBox(width: 10),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+          SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Available Mechanics',
+                  style: TextStyle(
+                    fontSize: screenHeight < 700 ? 18 : 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {},
+                  child: Text('See All'),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 10),
+          Flexible(
+            
+            child: Expanded(
+              child: ListView.builder(
+                itemCount: mechanics.length,
+                itemBuilder: (context, index) {
+                  final mechanic = mechanics[index];
+                  return Card(
+                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    child: ListTile(
+                      leading: Icon(mechanic['icon'], color: Colors.green),
+                      title: Row(
+                        children: [
+                          Text(mechanic['name']),
+                          SizedBox(width: 10),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: mechanic['status'] == 'Available'
+                                  ? Colors.green
+                                  : Colors.orange,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              mechanic['status'],
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 12),
+                            ),
                           ),
-                          decoration: BoxDecoration(
-                            color: mechanic['status'] == 'Available'
-                                ? Colors.green
-                                : Colors.orange,
+                        ],
+                      ),
+                      subtitle:
+                          Text('${mechanic['time']} - ${mechanic['distance']}'),
+                      trailing: ElevatedButton.icon(
+                        icon: Icon(
+                          mechanic['actions'][0] == 'Call'
+                              ? Icons.call
+                              : Icons.chat,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          padding:
+                              EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                          foregroundColor: Colors.blue,
+                          shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text(
-                            mechanic['status'],
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
                         ),
-                      ],
-                    ),
-                    subtitle: Text(
-                      '${mechanic['time']} - ${mechanic['distance']}',
-                    ),
-                    trailing: ElevatedButton.icon(
-                      icon: Icon(
-                        mechanic['actions'][0] == 'Call'
-                            ? Icons.call
-                            : Icons.chat,
+                        label: Text(mechanic['actions'][0]),
+                        onPressed: () {},
                       ),
-                      label: Text(mechanic['actions'][0]),
-                      onPressed: () {},
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ],
