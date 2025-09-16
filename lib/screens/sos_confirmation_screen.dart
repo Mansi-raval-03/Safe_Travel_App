@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:safe_travel_app/models/emergency_screen.dart';
 import 'dart:async';
 import '../models/user.dart';
-import '../models/emergency_contact.dart';
 import '../widgets/bottom_navigation.dart';
 
 class SOSConfirmationScreen extends StatefulWidget {
@@ -11,7 +11,7 @@ class SOSConfirmationScreen extends StatefulWidget {
 
   const SOSConfirmationScreen({
     Key? key,
-    required this.user,
+    this.user, // made optional (removed required since nullable)
     required this.emergencyContacts,
     required this.onNavigate,
   }) : super(key: key);
@@ -19,7 +19,6 @@ class SOSConfirmationScreen extends StatefulWidget {
   @override
   _SOSConfirmationScreenState createState() => _SOSConfirmationScreenState();
 }
-
 class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
   int _countdown = 10;
   bool _isActive = false;
@@ -33,15 +32,11 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
     super.dispose();
   }
 
-  void _startCountdown() {
-    setState(() {
-      _isActive = true;
-    });
+   void _startCountdown() {
+    setState(() => _isActive = true);
 
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-      setState(() {
-        _countdown--;
-      });
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() => _countdown--);
 
       if (_countdown <= 0) {
         timer.cancel();
@@ -83,31 +78,27 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
     _sendAlert();
   }
 
-  @override
+   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Column(
         children: [
-          // Status Bar
+          /// Custom Status Bar
           Container(
             height: 48,
-            decoration: BoxDecoration(
-              color: Color(0xFFB91C1C),
-            ),
+            color: const Color(0xFFB91C1C),
             child: SafeArea(
+              bottom: false,
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
+                    const Text(
                       '9:41',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 14),
                     ),
-                    Text(
+                    const Text(
                       'Emergency SOS',
                       style: TextStyle(
                         color: Colors.white,
@@ -117,32 +108,11 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
                     ),
                     Row(
                       children: [
-                        Container(
-                          width: 16,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.6),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        SizedBox(width: 4),
-                        Container(
-                          width: 16,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.6),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        SizedBox(width: 4),
-                        Container(
-                          width: 16,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
+                        _buildStatusDot(active: false),
+                        const SizedBox(width: 4),
+                        _buildStatusDot(active: false),
+                        const SizedBox(width: 4),
+                        _buildStatusDot(active: true),
                       ],
                     ),
                   ],
@@ -152,61 +122,55 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
           ),
 
           // Header
+      /// Header
           Container(
-            decoration: BoxDecoration(
-              color: Color(0xFFEF4444),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => widget.onNavigate(2), // Home screen
-                        icon: Icon(Icons.arrow_back, color: Colors.white),
-                        style: IconButton.styleFrom(
-                          padding: EdgeInsets.all(4),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.shield, color: Colors.white, size: 24),
-                          SizedBox(width: 8),
-                          Text(
-                            'Emergency SOS',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  if (_isActive)
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
+            color: const Color(0xFFEF4444),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => widget.onNavigate(2),
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      padding: EdgeInsets.zero, // fixed here
+                      constraints: const BoxConstraints(), // no extra space
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.shield, color: Colors.white, size: 24),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Emergency SOS',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'ACTIVE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFFEF4444),
-                        ),
                       ),
                     ),
-                ],
-              ),
+                  ],
+                ),
+                if (_isActive)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'ACTIVE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
+
 
           // Content
           Expanded(
@@ -902,3 +866,15 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
     );
   }
 }
+
+  /// helper widget for top-right status bar
+  Widget _buildStatusDot({required bool active}) {
+    return Container(
+      width: 16,
+      height: 8,
+      decoration: BoxDecoration(
+        color: active ? Colors.white : Colors.white.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
