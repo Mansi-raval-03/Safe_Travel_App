@@ -67,6 +67,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Profile"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => widget.onNavigate(2), // Navigate back to Home screen
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

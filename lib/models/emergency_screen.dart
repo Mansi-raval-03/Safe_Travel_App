@@ -53,6 +53,10 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Emergency Contacts"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => widget.onNavigate(2), // Navigate back to Home screen
+        ),
         backgroundColor: Colors.redAccent,
       ),
       body: ListView.builder(

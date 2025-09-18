@@ -83,45 +83,8 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
     return Scaffold(
       body: Column(
         children: [
-          /// Custom Status Bar
-          Container(
-            height: 48,
-            color: const Color(0xFFB91C1C),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      '9:41',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                    const Text(
-                      'Emergency SOS',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        _buildStatusDot(active: false),
-                        const SizedBox(width: 4),
-                        _buildStatusDot(active: false),
-                        const SizedBox(width: 4),
-                        _buildStatusDot(active: true),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Header
+          SizedBox(height: MediaQuery.of(context).padding.top),
+        
       /// Header
           Container(
             color: const Color(0xFFEF4444),

@@ -23,7 +23,7 @@ class SafeTravelApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         fontFamily: 'SF Pro Text',
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        appBarTheme: AppBarTheme(
+        appBarTheme: const AppBarTheme(
           systemOverlayStyle: SystemUiOverlayStyle.light,
         ),
       ),
@@ -39,12 +39,23 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp> {
-  int _currentScreen = 0; // 0: signin, 1: signup, 2: home, 3: map, 4: sos, 5: contacts, 6: settings, 7: profile
+  int _currentScreen =
+      0; // 0: signin, 1: signup, 2: home, 3: map, 4: sos, 5: contacts, 6: settings, 7: profile
   User? _user;
+
   List<EmergencyContact> _emergencyContacts = [
-    EmergencyContact(id: '1', name: 'John Doe', phone: '+1234567890', relationship: 'Father'),
-    EmergencyContact(id: '2', name: 'Jane Smith', phone: '+0987654321', relationship: 'Mother'),
-    EmergencyContact(id: '3', name: 'Mike Johnson', phone: '+1122334455', relationship: 'Brother'),
+    EmergencyContact(
+        id: '1', name: 'John Doe', phone: '+1234567890', relationship: 'Father'),
+    EmergencyContact(
+        id: '2',
+        name: 'Jane Smith',
+        phone: '+0987654321',
+        relationship: 'Mother'),
+    EmergencyContact(
+        id: '3',
+        name: 'Mike Johnson',
+        phone: '+1122334455',
+        relationship: 'Brother'),
   ];
 
   void _navigateToScreen(int screen) {
@@ -61,26 +72,26 @@ class _MainAppState extends State<MainApp> {
         email: email,
         phone: '+1234567890',
       );
-      _currentScreen = 2; // Navigate to home
+      _currentScreen = 2; // go to home
     });
   }
 
-  void _handleSignup(String name, String email, String phone, String password) {
+  void _handleSignup(String email, String password) {
     setState(() {
       _user = User(
         id: '1',
-        name: name,
+        name: 'New User',
         email: email,
-        phone: phone,
+        phone: '+0000000000',
       );
-      _currentScreen = 2; // Navigate to home
+      _currentScreen = 2; // go to home
     });
   }
 
   void _handleSignout() {
     setState(() {
       _user = null;
-      _currentScreen = 0; // Navigate to signin
+      _currentScreen = 0; // back to signin
     });
   }
 
@@ -97,57 +108,57 @@ class _MainAppState extends State<MainApp> {
   }
 
   Widget _buildCurrentScreen() {
-    switch (_currentScreen) {
-      case 0:
-        return SigninScreen(
-          onSignin: _handleSignin,
-          onNavigateToSignup: () => _navigateToScreen(1),
-        );
-      case 1:
-        return SignupScreen(
-          onSignup: _handleSignup,
-          onNavigateToSignin: () => _navigateToScreen(0),
-        );
-      case 2:
-        return HomeScreen(
-          user: _user,
-          onNavigate: _navigateToScreen,
-        );
-      case 3:
-        return MapScreen(
-          onNavigate: _navigateToScreen,
-          onTriggerSOS: () => _navigateToScreen(4),
-        );
-      case 4:
-        return SOSConfirmationScreen(
-          user: _user,
-          emergencyContacts: _emergencyContacts,
-          onNavigate: _navigateToScreen,
-        );
-      case 5:
-        return EmergencyScreen(
-          contacts: _emergencyContacts,
-          onUpdateContacts: _updateEmergencyContacts,
-          onNavigate: _navigateToScreen, id: '', name: '', phone: '', relationship: '',
-        );
-      case 6:
-        return SettingsScreen(
-          onNavigate: _navigateToScreen,
-          onSignout: _handleSignout,
-        );
-      case 7:
-        return ProfileScreen(
-          user: _user,
-          onUpdateUser: _updateUser,
-          onNavigate: _navigateToScreen,
-        );
-      default:
-        return SigninScreen(
-          onSignin: _handleSignin,
-          onNavigateToSignup: () => _navigateToScreen(1),
-        );
-    }
+  switch (_currentScreen) {
+    case 0:
+      return SigninScreen(
+        onSignin: _handleSignin,
+        onNavigateToSignup: () => _navigateToScreen(1),
+      );
+    case 1:
+      return SignUpScreen(
+        onSignup: _handleSignup,
+        onNavigateToSignin: () => _navigateToScreen(0),
+      );
+    case 2:
+      return HomeScreen(
+        user: _user,
+        onNavigate: _navigateToScreen,
+      );
+    case 3:
+      return MapScreen(
+        onNavigate: _navigateToScreen,
+        onTriggerSOS: () => _navigateToScreen(4),
+      );
+    case 4:
+      return SOSConfirmationScreen(
+        user: _user,
+        emergencyContacts: _emergencyContacts,
+        onNavigate: _navigateToScreen,
+      );
+    case 5:
+      return EmergencyScreen(
+        contacts: _emergencyContacts,
+        onUpdateContacts: _updateEmergencyContacts,
+        onNavigate: _navigateToScreen, id: '', name: '', phone: '', relationship: '',
+      );
+    case 6:
+      return SettingsScreen(
+        onNavigate: _navigateToScreen,
+        onSignout: _handleSignout,
+      );
+    case 7:
+      return ProfileScreen(
+        user: _user,
+        onUpdateUser: _updateUser,
+        onNavigate: _navigateToScreen,
+      );
+    default:
+      return SigninScreen(
+        onSignin: _handleSignin,
+        onNavigateToSignup: () => _navigateToScreen(1),
+      );
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -156,4 +167,3 @@ class _MainAppState extends State<MainApp> {
     );
   }
 }
-

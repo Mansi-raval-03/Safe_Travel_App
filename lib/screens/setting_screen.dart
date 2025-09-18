@@ -15,6 +15,10 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => onNavigate(2), // Navigate back to Home screen
+        ),
       ),
       body: ListView(
         children: [
