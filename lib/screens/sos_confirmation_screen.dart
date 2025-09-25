@@ -9,7 +9,7 @@ class SOSConfirmationScreen extends StatefulWidget {
   final List<EmergencyContact> emergencyContacts;
   final Function(int) onNavigate;
 
-  const SOSConfirmationScreen({
+  const SOSConfirmationScreen({  
     Key? key,
     this.user, // made optional (removed required since nullable)
     required this.emergencyContacts,

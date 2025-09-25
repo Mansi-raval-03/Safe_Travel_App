@@ -354,67 +354,87 @@ class HomeScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Nearby Emergency Services',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Nearby Emergency Services',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => onNavigate(3), // Map screen
+                                  child: Text(
+                                    'View All',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF3B82F6),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             SizedBox(height: 12),
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(),
-                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio: 2,
-                              ),
-                              itemCount: nearbyServices.length,
-                              itemBuilder: (context, index) {
-                                final service = nearbyServices[index];
+                            Column(
+                              children: nearbyServices.map((service) {
                                 return Container(
+                                  margin: EdgeInsets.only(bottom: 8),
                                   padding: EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: Colors.grey.shade50,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                  child: Row(
                                     children: [
-                                      Icon(
-                                        service['icon'] as IconData,
-                                        color: Color(0xFF3B82F6),
-                                        size: 24,
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        service['name'] as String,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFF3B82F6).withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(10),
                                         ),
-                                        textAlign: TextAlign.center,
+                                        child: Icon(
+                                          service['icon'] as IconData,
+                                          color: Color(0xFF3B82F6),
+                                          size: 20,
+                                        ),
                                       ),
-                                      Text(
-                                        '${service['count']} nearby',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.grey.shade600,
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              service['name'] as String,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            Text(
+                                              '${service['count']} nearby',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                       Text(
                                         service['distance'] as String,
                                         style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.grey.shade600,
+                                          fontSize: 12,
+                                          color: Color(0xFF10B981),
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ],
                                   ),
                                 );
-                              },
+                              }).toList(),
                             ),
                           ],
                         ),

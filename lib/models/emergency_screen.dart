@@ -3,34 +3,30 @@ import 'package:url_launcher/url_launcher.dart';
 
 // ------------------ Emergency Screen ------------------
 class EmergencyScreen extends StatefulWidget {
-  const EmergencyScreen({super.key, required List<EmergencyContact> contacts, required void Function(List<EmergencyContact> contacts) onUpdateContacts, required void Function(int screen) onNavigate, required String id, required String name, required String phone, required String relationship});
+  final List<EmergencyContact> contacts;
+  final Function(List<EmergencyContact>) onUpdateContacts;
+  final Function(int) onNavigate;
+
+  const EmergencyScreen({
+    super.key,
+    required this.contacts,
+    required this.onUpdateContacts,
+    required this.onNavigate,
+  });
 
   @override
   State<EmergencyScreen> createState() => _EmergencyScreenState();
 }
 
 class _EmergencyScreenState extends State<EmergencyScreen> {
-  // Sample list of contacts (can be replaced with backend data)
-  final List<EmergencyContact> contacts = [
-    EmergencyContact(
-      id: '1',
-      name: 'Dad',
-      phone: '9876543210',
-      relationship: 'Father',
-    ),
-    EmergencyContact(
-      id: '2',
-      name: 'Mom',
-      phone: '9876501234',
-      relationship: 'Mother',
-    ),
-    EmergencyContact(
-      id: '3',
-      name: 'Best Friend',
-      phone: '9876509876',
-      relationship: 'Friend',
-    ),
-  ];
+  // Use the contacts passed from parent instead of hardcoded ones
+  late List<EmergencyContact> contacts;
+
+  @override
+  void initState() {
+    super.initState();
+    contacts = List.from(widget.contacts);
+  }
 
   // Function to make a phone call
   Future<void> _makeCall(String phone) async {

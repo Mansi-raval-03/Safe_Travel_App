@@ -139,7 +139,7 @@ class _MainAppState extends State<MainApp> {
       return EmergencyScreen(
         contacts: _emergencyContacts,
         onUpdateContacts: _updateEmergencyContacts,
-        onNavigate: _navigateToScreen, id: '', name: '', phone: '', relationship: '',
+        onNavigate: _navigateToScreen,
       );
     case 6:
       return SettingsScreen(
