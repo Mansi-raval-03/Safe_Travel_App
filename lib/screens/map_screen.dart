@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../widgets/bottom_navigation.dart';
 import '../services/location_service.dart';
 import '../services/socket_service.dart';
@@ -27,11 +28,19 @@ class _MapScreenState extends State<MapScreen> {
   final LocationService _locationService = LocationService();
   final SocketIOService _socketService = SocketIOService();
   
+  // Google Maps
+  GoogleMapController? _mapController;
+  final Completer<GoogleMapController> _controller = Completer();
+  
   // Location tracking
   Position? _currentPosition;
   List<Map<String, dynamic>> _nearbyUsers = [];
   StreamSubscription<Position>? _locationSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _nearbyUsersSubscription;
+  
+  // Map settings
+  Set<Marker> _markers = {};
+  LatLng _initialCameraPosition = const LatLng(37.7749, -122.4194); // Default to San Francisco
   
   bool _isLocationServiceInitialized = false;
   bool _isSocketConnected = false;
@@ -41,51 +50,176 @@ class _MapScreenState extends State<MapScreen> {
     super.initState();
     _initializeServices();
   }
+  
+  Future<void> _initializeServices() async {
+    await _initLocationService();
+    await _initSocketService();
+  }
 
   /// Initialize location and socket services
-  Future<void> _initializeServices() async {
+  Future<void> _initLocationService() async {
     try {
-      // Initialize location service
-      _isLocationServiceInitialized = await _locationService.initialize();
-      if (_isLocationServiceInitialized) {
-        _currentPosition = _locationService.currentPosition;
+      print('🔄 Initializing location service...');
+      bool initialized = await _locationService.initialize();
+      
+      if (!initialized) {
+        print('❌ Location service initialization failed');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location service failed to initialize. Please check permissions.')),
+        );
+        return;
+      }
+      
+      // Get initial position and set camera
+      print('📍 Getting current location...');
+      _currentPosition = await _locationService.getCurrentLocation();
+      
+      if (_currentPosition != null) {
+        print('✅ Got location: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
+        _initialCameraPosition = LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
+        _updateMarkers();
         
-        // Listen to location updates
-        _locationSubscription = _locationService.locationStream.listen((position) {
-          setState(() {
-            _currentPosition = position;
-          });
+        setState(() {
+          _isLocationServiceInitialized = true;
         });
         
+        // Start location tracking
+        print('🔄 Starting location tracking...');
         _locationService.startLocationTracking();
+        
+        _locationSubscription = _locationService.locationStream.listen(
+          (Position position) {
+            print('📍 Location update: ${position.latitude}, ${position.longitude}');
+            setState(() {
+              _currentPosition = position;
+              _updateMarkers();
+            });
+            
+            // Update camera position
+            _moveCamera(LatLng(position.latitude, position.longitude));
+          },
+          onError: (error) {
+            print('❌ Location stream error: $error');
+          },
+        );
+        
+        print('✅ Location service initialized successfully');
+      } else {
+        print('❌ Failed to get current location');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not get your current location. Please check GPS settings.')),
+        );
       }
-
-      // Initialize Socket.IO service
-      _isSocketConnected = await _socketService.initialize(
-        serverUrl: 'http://localhost:3000', // Replace with your server URL
-        userId: 'user_${DateTime.now().millisecondsSinceEpoch}',
-        userName: 'Safe Traveler',
+    } catch (e) {
+      print('❌ Error initializing location service: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to initialize location services: $e')),
       );
+    }
+  }
 
-      if (_isSocketConnected) {
-        // Listen to nearby users updates
+  Future<void> _initSocketService() async {
+    try {
+      // Note: In a real app, you would get these from authentication
+      // For demo purposes, using placeholder values
+      bool connected = await _socketService.initialize(
+        serverUrl: 'http://localhost:3000', // Replace with your backend URL
+        userId: 'demo_user_123',
+        userName: 'Demo User',
+      );
+      
+      if (connected) {
+        // Listen for nearby users updates
         _nearbyUsersSubscription = _socketService.nearbyUsersStream.listen((users) {
           setState(() {
             _nearbyUsers = users;
+            _updateMarkers();
           });
         });
-
-        // Request nearby users every 30 seconds
-        Timer.periodic(Duration(seconds: 30), (_) {
-          if (_isSocketConnected) {
-            _socketService.requestNearbyUsers(radiusInKm: 5.0);
-          }
+        
+        setState(() {
+          _isSocketConnected = true;
         });
+        
+        print('✅ Socket service initialized successfully');
+      } else {
+        setState(() {
+          _isSocketConnected = false;
+        });
+        print('❌ Failed to connect to socket service');
       }
-
-      setState(() {}); // Refresh UI
     } catch (e) {
-      print('Error initializing services: $e');
+      print('❌ Error initializing socket service: $e');
+      setState(() {
+        _isSocketConnected = false;
+      });
+    }
+  }
+
+  void _updateMarkers() {
+    print('🎯 Updating markers...');
+    Set<Marker> markers = {};
+    
+    // Add current location marker
+    if (_currentPosition != null) {
+      print('📍 Adding current location marker at: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
+      markers.add(
+        Marker(
+          markerId: const MarkerId('current_location'),
+          position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          infoWindow: const InfoWindow(
+            title: 'Your Location',
+            snippet: 'Current GPS position',
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        ),
+      );
+    }
+    
+    // Add nearby users markers
+    print('👥 Adding ${_nearbyUsers.length} nearby user markers');
+    for (int i = 0; i < _nearbyUsers.length; i++) {
+      final user = _nearbyUsers[i];
+      if (user['latitude'] != null && user['longitude'] != null) {
+        markers.add(
+          Marker(
+            markerId: MarkerId('user_${user['userId'] ?? i}'),
+            position: LatLng(user['latitude'].toDouble(), user['longitude'].toDouble()),
+            infoWindow: InfoWindow(
+              title: 'User ${user['name'] ?? 'Unknown'}',
+              snippet: 'Status: ${user['status'] ?? 'Safe'}',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              user['status'] == 'in_danger' 
+                ? BitmapDescriptor.hueRed 
+                : BitmapDescriptor.hueGreen,
+            ),
+          ),
+        );
+      }
+    }
+    
+    print('✅ Updated ${markers.length} markers');
+    setState(() {
+      _markers = markers;
+    });
+  }
+
+  Future<void> _moveCamera(LatLng target) async {
+    if (_mapController != null) {
+      print('📱 Moving camera to: ${target.latitude}, ${target.longitude}');
+      await _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: target,
+            zoom: 16.0,
+            tilt: 0,
+            bearing: 0,
+          ),
+        ),
+      );
+    } else {
+      print('⚠️ Map controller not initialized yet');
     }
   }
 
@@ -459,24 +593,83 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       child: Stack(
                         children: [
-                          // Map background
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              image: DecorationImage(
-                                image: NetworkImage('https://images.unsplash.com/photo-1499591934245-40b55745b905'),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          
-                          // Map overlay
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              color: Colors.black.withOpacity(0.1),
-                            ),
-                          ),
+                          // Google Map or loading state
+                          _isLocationServiceInitialized && _currentPosition != null
+                              ? GoogleMap(
+                                  initialCameraPosition: CameraPosition(
+                                    target: _initialCameraPosition,
+                                    zoom: 16.0,
+                                  ),
+                                  onMapCreated: (GoogleMapController controller) {
+                                    print('🗺️ Google Map created successfully');
+                                    _controller.complete(controller);
+                                    _mapController = controller;
+                                    
+                                    // Move to current location immediately
+                                    if (_currentPosition != null) {
+                                      _moveCamera(LatLng(_currentPosition!.latitude, _currentPosition!.longitude));
+                                    }
+                                  },
+                                  markers: _markers,
+                                  myLocationEnabled: true,
+                                  myLocationButtonEnabled: true,
+                                  mapType: MapType.normal,
+                                  buildingsEnabled: true,
+                                  trafficEnabled: false,
+                                  compassEnabled: true,
+                                  rotateGesturesEnabled: true,
+                                  scrollGesturesEnabled: true,
+                                  tiltGesturesEnabled: true,
+                                  zoomGesturesEnabled: true,
+                                  zoomControlsEnabled: false,
+                                  indoorViewEnabled: true,
+                                  mapToolbarEnabled: false,
+                                  onCameraMove: (CameraPosition position) {
+                                    // Optional: Log camera movements for debugging
+                                    // print('Camera moved to: ${position.target}');
+                                  },
+                                )
+                              : Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    color: Colors.grey.shade300,
+                                  ),
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.location_searching,
+                                          size: 48,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        SizedBox(height: 12),
+                                        Text(
+                                          _isLocationServiceInitialized
+                                              ? 'Loading Map...'
+                                              : 'Getting Location...',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        SizedBox(height: 16),
+                                        ElevatedButton.icon(
+                                          onPressed: () async {
+                                            await _initLocationService();
+                                          },
+                                          icon: Icon(Icons.refresh),
+                                          label: Text('Retry Location'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.blue,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
 
                           // You are here badge
                           Positioned(
@@ -576,109 +769,6 @@ class _MapScreenState extends State<MapScreen> {
                                 ),
                               ),
                             ),
-
-                          // Current user location pin (larger, pulsing)
-                          if (_currentPosition != null)
-                            Positioned(
-                              top: 100,
-                              left: 100,
-                              child: Container(
-                                width: 16,
-                                height: 16,
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 3),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.blue.withOpacity(0.3),
-                                      blurRadius: 10,
-                                      spreadRadius: 5,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                          // Nearby users pins
-                          ..._nearbyUsers.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final user = entry.value;
-                            
-                            // Position users in different locations on the mock map
-                            final positions = [
-                              {'top': 48.0, 'left': 64.0},
-                              {'top': 80.0, 'right': 80.0},
-                              {'top': 130.0, 'left': 48.0},
-                              {'top': 60.0, 'right': 50.0},
-                              {'top': 120.0, 'right': 120.0},
-                            ];
-                            
-                            final position = positions[index % positions.length];
-                            
-                            return Positioned(
-                              top: position['top'],
-                              left: position['left'],
-                              right: position['right'],
-                              child: Container(
-                                width: 12,
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  color: _getUserStatusColor(user['status'] ?? 'safe'),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                ),
-                                child: user['status'] == 'in_danger' 
-                                  ? Icon(
-                                      Icons.warning,
-                                      size: 8,
-                                      color: Colors.white,
-                                    )
-                                  : null,
-                              ),
-                            );
-                          }).toList(),
-
-                          // Static location pins (keeping the original ones for services)
-                          Positioned(
-                            top: 48,
-                            left: 64,
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 80,
-                            right: 80,
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: Colors.blue,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 48,
-                            left: 48,
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: Colors.green,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -1011,6 +1101,26 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          if (_currentPosition != null) {
+            // Move camera to current location
+            await _moveCamera(LatLng(_currentPosition!.latitude, _currentPosition!.longitude));
+          } else {
+            // Retry getting location
+            await _initLocationService();
+          }
+        },
+        backgroundColor: Colors.blue,
+        child: Icon(
+          _isLocationServiceInitialized 
+            ? Icons.my_location
+            : Icons.location_searching,
+          color: Colors.white,
+        ),
+        tooltip: 'My Location',
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: BottomNavigation(
         currentIndex: 1,
         onNavigate: widget.onNavigate,
