@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:safe_travel_app/models/emergency_screen.dart';
+import '../services/emergency_contact_service.dart';
 import 'dart:async';
 import '../models/user.dart';
 import '../widgets/bottom_navigation.dart';
 
 class SOSConfirmationScreen extends StatefulWidget {
   final User? user;
-  final List<EmergencyContact> emergencyContacts;
   final Function(int) onNavigate;
 
   const SOSConfirmationScreen({  
     Key? key,
     this.user, // made optional (removed required since nullable)
-    required this.emergencyContacts,
     required this.onNavigate,
   }) : super(key: key);
 
@@ -24,7 +22,38 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
   bool _isActive = false;
   bool _alertSent = false;
   List<String> _contactsNotified = [];
+  List<EmergencyContact> _emergencyContacts = [];
+  bool _isLoadingContacts = true;
   Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEmergencyContacts();
+  }
+
+  /// Load emergency contacts from MongoDB
+  Future<void> _loadEmergencyContacts() async {
+    try {
+      final contacts = await EmergencyContactService.getAllContacts();
+      setState(() {
+        _emergencyContacts = contacts;
+        _isLoadingContacts = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingContacts = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load emergency contacts: $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -32,7 +61,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
     super.dispose();
   }
 
-   void _startCountdown() {
+  void _startCountdown() {
     setState(() => _isActive = true);
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -61,10 +90,10 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
     });
 
     // Simulate notifying contacts one by one
-    for (int i = 0; i < widget.emergencyContacts.length; i++) {
+    for (int i = 0; i < _emergencyContacts.length; i++) {
       Timer(Duration(seconds: i + 1), () {
         setState(() {
-          _contactsNotified.add(widget.emergencyContacts[i].id);
+          _contactsNotified.add(_emergencyContacts[i].id);
         });
       });
     }
@@ -335,7 +364,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
                                   Icon(Icons.people, color: Color(0xFF10B981), size: 20),
                                   SizedBox(width: 8),
                                   Text(
-                                    'Emergency Contacts (${widget.emergencyContacts.length})',
+                                    'Emergency Contacts (${_emergencyContacts.length})',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -345,7 +374,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
                               ),
                               SizedBox(height: 12),
                               Column(
-                                children: widget.emergencyContacts.map((contact) {
+                                children: _emergencyContacts.map((contact) {
                                   return Container(
                                     margin: EdgeInsets.only(bottom: 8),
                                     padding: EdgeInsets.all(8),
@@ -628,7 +657,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
                               ),
                               SizedBox(height: 8),
                               Column(
-                                children: widget.emergencyContacts.map((contact) {
+                                children: _emergencyContacts.map((contact) {
                                   bool isNotified = _contactsNotified.contains(contact.id);
                                   return Container(
                                     margin: EdgeInsets.only(bottom: 8),

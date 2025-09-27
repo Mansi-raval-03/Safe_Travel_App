@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 
 class SignUpScreen extends StatefulWidget {
-  final Function(String, String) onSignup;
+  final Function(String, String, String, String) onSignup; // name, email, phone, password
   final VoidCallback onNavigateToSignin;
+  final bool isLoading;
+  final String errorMessage;
 
   const SignUpScreen({
     Key? key,
     required this.onSignup,
     required this.onNavigateToSignin,
+    this.isLoading = false,
+    this.errorMessage = '',
   }) : super(key: key);
 
   @override
@@ -16,7 +20,9 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -26,7 +32,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -35,11 +43,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void _validateForm() {
     Map<String, String> newErrors = {};
 
+    if (_nameController.text.trim().isEmpty) {
+      newErrors['name'] = 'Name is required';
+    } else if (_nameController.text.trim().length < 2) {
+      newErrors['name'] = 'Name must be at least 2 characters';
+    } else if (_nameController.text.trim().length > 50) {
+      newErrors['name'] = 'Name must be less than 50 characters';
+    }
+
     if (_emailController.text.trim().isEmpty) {
       newErrors['email'] = 'Email is required';
     } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
         .hasMatch(_emailController.text)) {
       newErrors['email'] = 'Email format is invalid';
+    }
+
+    if (_phoneController.text.trim().isEmpty) {
+      newErrors['phone'] = 'Phone number is required';
+    } else if (!RegExp(r'^[\+]?[1-9][\d]{0,15}$')
+        .hasMatch(_phoneController.text.trim())) {
+      newErrors['phone'] = 'Phone number format is invalid';
     }
 
     if (_passwordController.text.isEmpty) {
@@ -60,7 +83,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void _handleSubmit() {
     _validateForm();
     if (_errors.isEmpty) {
-      widget.onSignup(_emailController.text, _passwordController.text);
+      widget.onSignup(
+        _nameController.text.trim(),
+        _emailController.text.trim(),
+        _phoneController.text.trim(),
+        _passwordController.text,
+      );
     }
   }
 
@@ -156,12 +184,59 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 children: [
                                   const SizedBox(height: 24),
 
+                                  // Display error message if exists
+                                  if (widget.errorMessage.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      margin: const EdgeInsets.only(bottom: 16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade50,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: Colors.red.shade300),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              widget.errorMessage,
+                                              style: TextStyle(
+                                                color: Colors.red.shade700,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                  // Name Field
+                                  _buildTextField(
+                                    label: "Full Name",
+                                    controller: _nameController,
+                                    error: _errors['name'],
+                                    onChanged: () => _clearError('name'),
+                                  ),
+
+                                  const SizedBox(height: 24),
+
                                   // Email Field
                                   _buildTextField(
                                     label: "Email",
                                     controller: _emailController,
                                     error: _errors['email'],
                                     onChanged: () => _clearError('email'),
+                                  ),
+
+                                  const SizedBox(height: 24),
+
+                                  // Phone Field
+                                  _buildTextField(
+                                    label: "Phone Number",
+                                    controller: _phoneController,
+                                    error: _errors['phone'],
+                                    onChanged: () => _clearError('phone'),
                                   ),
 
                                   const SizedBox(height: 24),
@@ -221,7 +296,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     width: double.infinity,
                                     height: 48,
                                     child: ElevatedButton(
-                                      onPressed: _handleSubmit,
+                                      onPressed: widget.isLoading ? null : _handleSubmit,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor:
                                             const Color(0xFF3B82F6),
@@ -229,15 +304,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           borderRadius:
                                               BorderRadius.circular(12),
                                         ),
+                                        disabledBackgroundColor: Colors.grey.shade400,
                                       ),
-                                      child: const Text(
-                                        'Sign Up',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                        ),
-                                      ),
+                                      child: widget.isLoading
+                                          ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                color: Colors.white,
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                          : const Text(
+                                              'Sign Up',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                            ),
                                     ),
                                   ),
 

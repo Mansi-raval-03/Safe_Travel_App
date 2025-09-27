@@ -3,11 +3,15 @@ import 'package:flutter/material.dart';
 class SigninScreen extends StatefulWidget {
   final Function(String, String) onSignin;
   final VoidCallback onNavigateToSignup;
+  final bool isLoading;
+  final String errorMessage;
 
   const SigninScreen({
     Key? key,
     required this.onSignin,
     required this.onNavigateToSignup,
+    this.isLoading = false,
+    this.errorMessage = '',
   }) : super(key: key);
 
   @override
@@ -138,6 +142,33 @@ class _SigninScreenState extends State<SigninScreen> {
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       children: [
+                        // Display error message if exists
+                        if (widget.errorMessage.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.shade300),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    widget.errorMessage,
+                                    style: TextStyle(
+                                      color: Colors.red.shade700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
                         // Email Field
                         _buildTextField(
                           label: "Email",
@@ -218,21 +249,31 @@ class _SigninScreenState extends State<SigninScreen> {
                           width: double.infinity,
                           height: 48,
                           child: ElevatedButton(
-                            onPressed: _handleSubmit,
+                            onPressed: widget.isLoading ? null : _handleSubmit,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF3B82F6),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
+                              disabledBackgroundColor: Colors.grey.shade400,
                             ),
-                            child: const Text(
-                              'Sign In',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
+                            child: widget.isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Sign In',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                           ),
                         ),
 
