@@ -103,6 +103,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true, // important for keyboard push
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -114,251 +115,232 @@ class _SignUpScreenState extends State<SignUpScreen> {
         child: SafeArea(
           child: Column(
             children: [
+              const SizedBox(height: 48),
+
+              // Logo and Title
+              Column(
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.person_add,
+                      size: 40,
+                      color: Color(0xFF3B82F6),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Create Account',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sign up to get started',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.blue.shade100,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Form with scrollable area
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 48),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: SingleChildScrollView( // <-- FIX
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 16),
 
-                      // Logo and Title
-                      Column(
-                        children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
+                            // Display error message if exists
+                            if (widget.errorMessage.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.red.shade300),
                                 ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.person_add,
-                              size: 40,
-                              color: Color(0xFF3B82F6),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Create Account',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Sign up to get started',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.blue.shade100,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Form Container
-                      Expanded(
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(24),
-                              topRight: Radius.circular(24),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                children: [
-                                  const SizedBox(height: 24),
-
-                                  // Display error message if exists
-                                  if (widget.errorMessage.isNotEmpty)
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      margin: const EdgeInsets.only(bottom: 16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: Colors.red.shade300),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              widget.errorMessage,
-                                              style: TextStyle(
-                                                color: Colors.red.shade700,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                  // Name Field
-                                  _buildTextField(
-                                    label: "Full Name",
-                                    controller: _nameController,
-                                    error: _errors['name'],
-                                    onChanged: () => _clearError('name'),
-                                  ),
-
-                                  const SizedBox(height: 24),
-
-                                  // Email Field
-                                  _buildTextField(
-                                    label: "Email",
-                                    controller: _emailController,
-                                    error: _errors['email'],
-                                    onChanged: () => _clearError('email'),
-                                  ),
-
-                                  const SizedBox(height: 24),
-
-                                  // Phone Field
-                                  _buildTextField(
-                                    label: "Phone Number",
-                                    controller: _phoneController,
-                                    error: _errors['phone'],
-                                    onChanged: () => _clearError('phone'),
-                                  ),
-
-                                  const SizedBox(height: 24),
-
-                                  // Password Field
-                                  _buildTextField(
-                                    label: "Password",
-                                    controller: _passwordController,
-                                    error: _errors['password'],
-                                    obscureText: !_showPassword,
-                                    onChanged: () => _clearError('password'),
-                                    suffixIcon: IconButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          _showPassword = !_showPassword;
-                                        });
-                                      },
-                                      icon: Icon(
-                                        _showPassword
-                                            ? Icons.visibility_off
-                                            : Icons.visibility,
-                                        color: Colors.grey.shade500,
-                                      ),
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 24),
-
-                                  // Confirm Password Field
-                                  _buildTextField(
-                                    label: "Confirm Password",
-                                    controller: _confirmPasswordController,
-                                    error: _errors['confirmPassword'],
-                                    obscureText: !_showConfirmPassword,
-                                    onChanged: () =>
-                                        _clearError('confirmPassword'),
-                                    suffixIcon: IconButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          _showConfirmPassword =
-                                              !_showConfirmPassword;
-                                        });
-                                      },
-                                      icon: Icon(
-                                        _showConfirmPassword
-                                            ? Icons.visibility_off
-                                            : Icons.visibility,
-                                        color: Colors.grey.shade500,
-                                      ),
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 24),
-
-                                  // Sign Up Button
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 48,
-                                    child: ElevatedButton(
-                                      onPressed: widget.isLoading ? null : _handleSubmit,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            const Color(0xFF3B82F6),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        disabledBackgroundColor: Colors.grey.shade400,
-                                      ),
-                                      child: widget.isLoading
-                                          ? const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : const Text(
-                                              'Sign Up',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                    ),
-                                  ),
-
-                                  const Spacer(),
-
-                                  // Sign In Link
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'Already have an account? ',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.error_outline,
+                                        color: Colors.red.shade600, size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        widget.errorMessage,
                                         style: TextStyle(
-                                          color: Colors.grey.shade600,
+                                          color: Colors.red.shade700,
                                           fontSize: 14,
                                         ),
                                       ),
-                                      TextButton(
-                                        onPressed: widget.onNavigateToSignin,
-                                        child: const Text(
-                                          'Sign in',
-                                          style: TextStyle(
-                                            color: Color(0xFF3B82F6),
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            _buildTextField(
+                              label: "Full Name",
+                              controller: _nameController,
+                              error: _errors['name'],
+                              onChanged: () => _clearError('name'),
+                            ),
+                            const SizedBox(height: 16),
+
+                            _buildTextField(
+                              label: "Email",
+                              controller: _emailController,
+                              error: _errors['email'],
+                              onChanged: () => _clearError('email'),
+                            ),
+                            const SizedBox(height: 16),
+
+                            _buildTextField(
+                              label: "Phone Number",
+                              controller: _phoneController,
+                              error: _errors['phone'],
+                              onChanged: () => _clearError('phone'),
+                            ),
+                            const SizedBox(height: 16),
+
+                            _buildTextField(
+                              label: "Password",
+                              controller: _passwordController,
+                              error: _errors['password'],
+                              obscureText: !_showPassword,
+                              onChanged: () => _clearError('password'),
+                              suffixIcon: IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _showPassword = !_showPassword;
+                                  });
+                                },
+                                icon: Icon(
+                                  _showPassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  color: Colors.grey.shade500,
+                                ),
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 16),
+
+                            _buildTextField(
+                              label: "Confirm Password",
+                              controller: _confirmPasswordController,
+                              error: _errors['confirmPassword'],
+                              obscureText: !_showConfirmPassword,
+                              onChanged: () =>
+                                  _clearError('confirmPassword'),
+                              suffixIcon: IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _showConfirmPassword =
+                                        !_showConfirmPassword;
+                                  });
+                                },
+                                icon: Icon(
+                                  _showConfirmPassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Sign Up Button
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: ElevatedButton(
+                                onPressed: widget.isLoading ? null : _handleSubmit,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF3B82F6),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  disabledBackgroundColor: Colors.grey.shade400,
+                                ),
+                                child: widget.isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Sign Up',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Sign In Link
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Already have an account? ',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: widget.onNavigateToSignin,
+                                  child: const Text(
+                                    'Sign in',
+                                    style: TextStyle(
+                                      color: Color(0xFF3B82F6),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

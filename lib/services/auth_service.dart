@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
@@ -12,17 +14,14 @@ class AuthService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/signup'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: ApiConfig.commonHeaders,
         body: json.encode({
           'name': name,
           'email': email,
           'phone': phone,
           'password': password,
         }),
-      );
+      ).timeout(ApiConfig.requestTimeout);
 
       final Map<String, dynamic> responseData = json.decode(response.body);
 
@@ -53,6 +52,21 @@ class AuthService {
           message: responseData['message'] ?? 'Signup failed',
         );
       }
+    } on TimeoutException {
+      return AuthResult(
+        success: false,
+        message: ApiConfig.timeoutErrorMessage,
+      );
+    } on SocketException {
+      return AuthResult(
+        success: false,
+        message: 'Unable to connect to server. Please ensure the backend server is running and try again.',
+      );
+    } on FormatException {
+      return AuthResult(
+        success: false,
+        message: 'Invalid server response. Please try again.',
+      );
     } catch (e) {
       return AuthResult(
         success: false,
@@ -66,15 +80,12 @@ class AuthService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/signin'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: ApiConfig.commonHeaders,
         body: json.encode({
           'email': email,
           'password': password,
         }),
-      );
+      ).timeout(ApiConfig.requestTimeout);
 
       final Map<String, dynamic> responseData = json.decode(response.body);
 
@@ -105,6 +116,21 @@ class AuthService {
           message: responseData['message'] ?? 'Invalid credentials',
         );
       }
+    } on TimeoutException {
+      return AuthResult(
+        success: false,
+        message: ApiConfig.timeoutErrorMessage,
+      );
+    } on SocketException {
+      return AuthResult(
+        success: false,
+        message: 'Unable to connect to server. Please ensure the backend server is running and try again.',
+      );
+    } on FormatException {
+      return AuthResult(
+        success: false,
+        message: 'Invalid server response. Please try again.',
+      );
     } catch (e) {
       return AuthResult(
         success: false,
