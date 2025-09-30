@@ -3,7 +3,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../widgets/bottom_navigation.dart';
 import '../services/location_service.dart';
+import '../services/location_sharing_service.dart';
 import '../services/socket_service.dart';
+import '../widgets/native_location_sharing_sheet.dart';
 import 'dart:async';
 
 class MapScreen extends StatefulWidget {
@@ -26,6 +28,7 @@ class _MapScreenState extends State<MapScreen> {
   
   // Services
   final LocationService _locationService = LocationService();
+  final LocationSharingService _sharingService = LocationSharingService();
   final SocketIOService _socketService = SocketIOService();
   
   // Google Maps
@@ -44,6 +47,11 @@ class _MapScreenState extends State<MapScreen> {
   
   bool _isLocationServiceInitialized = false;
   bool _isSocketConnected = false;
+  
+  // Location sharing state
+  bool _isSharingLocation = false;
+  Duration? _sharingTimeRemaining;
+  StreamSubscription<LocationSharingStatus>? _sharingStatusSubscription;
 
   @override
   void initState() {
@@ -54,6 +62,46 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _initializeServices() async {
     await _initLocationService();
     await _initSocketService();
+    _initLocationSharingService();
+  }
+
+  /// Initialize location sharing service
+  void _initLocationSharingService() {
+    // Listen to sharing status updates
+    _sharingStatusSubscription = _sharingService.sharingStatusStream.listen((status) {
+      setState(() {
+        _isSharingLocation = status.isActive;
+        if (status.isActive) {
+          final remaining = _sharingService.remainingSharingTime;
+          _sharingTimeRemaining = remaining;
+          
+          // Start a timer to update remaining time
+          _startSharingTimeUpdateTimer();
+        } else {
+          _sharingTimeRemaining = null;
+        }
+      });
+      print('📡 Location sharing status updated: ${status.isActive}');
+    });
+  }
+
+  /// Start timer to update sharing time remaining
+  void _startSharingTimeUpdateTimer() {
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!_isSharingLocation) {
+        timer.cancel();
+        return;
+      }
+      
+      final remaining = _sharingService.remainingSharingTime;
+      setState(() {
+        _sharingTimeRemaining = remaining;
+      });
+      
+      if (remaining == null || remaining <= Duration.zero) {
+        timer.cancel();
+      }
+    });
   }
 
   /// Initialize location and socket services
@@ -291,22 +339,131 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  /// Offer help to a user in need
+ 
+
+  /// Start location sharing
+  Future<void> _startLocationSharing(Duration duration) async {
+    try {
+      final result = await _sharingService.startLocationSharing(
+        duration: duration,
+        privacyLevel: SharingPrivacyLevel.friends,
+        includeSpeedAndHeading: true,
+        allowRealTimeUpdates: true,
+      );
+
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Location sharing started for ${duration.inMinutes} minutes'),
+            backgroundColor: Colors.green,
+            action: SnackBarAction(
+              label: 'Share',
+              textColor: Colors.white,
+              onPressed: () => _shareLocationLink(),
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start location sharing: ${result.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error starting location sharing: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Stop location sharing
+  void _stopLocationSharing() {
+    _sharingService.stopLocationSharing();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Location sharing stopped'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+ /// Offer help to a user in need
   void _offerHelp(Map<String, dynamic> user) {
     if (_isSocketConnected) {
       // Send help offer through socket
       _socketService.updateUserStatus('offering_help', 
         message: 'Offering assistance to ${user['userName']}');
       
-      // Show confirmation
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Help offer sent to ${user['userName']}'),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
         ),
       );
     }
+  }
+  /// Share location link with native options
+  Future<void> _shareLocationLink() async {
+    try {
+      await showNativeLocationSharingSheet(
+        context: context,
+        sharingService: _sharingService,
+        customMessage: 'I\'m sharing my live location with you via Safe Travel App!',
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error sharing location: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Show location sharing dialog
+  void _showLocationSharingDialog() {
+    final durations = [
+      {'label': '15 minutes', 'description': 'Short sharing session', 'duration': const Duration(minutes: 15)},
+      {'label': '30 minutes', 'description': 'Medium sharing session', 'duration': const Duration(minutes: 30)},
+      {'label': '1 hour', 'description': 'Long sharing session', 'duration': const Duration(hours: 1)},
+      {'label': '2 hours', 'description': 'Extended sharing session', 'duration': const Duration(hours: 2)},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Share Live Location'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('How long would you like to share your location?'),
+              const SizedBox(height: 16),
+              ...durations.map((duration) => 
+                ListTile(
+                  title: Text(duration['label'] as String),
+                  subtitle: Text(duration['description'] as String),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _startLocationSharing(duration['duration'] as Duration);
+                  },
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   final List<Map<String, dynamic>> nearbyServices = [
@@ -353,7 +510,9 @@ class _MapScreenState extends State<MapScreen> {
     _destinationController.dispose();
     _locationSubscription?.cancel();
     _nearbyUsersSubscription?.cancel();
+    _sharingStatusSubscription?.cancel();
     _locationService.dispose();
+    _sharingService.dispose();
     _socketService.dispose();
     super.dispose();
   }
@@ -769,6 +928,37 @@ class _MapScreenState extends State<MapScreen> {
                                 ),
                               ),
                             ),
+
+                          // Location sharing badge
+                          if (_isSharingLocation)
+                            Positioned(
+                              bottom: 12,
+                              left: 12,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.share_location, size: 12, color: Colors.white),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      _sharingTimeRemaining != null
+                                          ? '${_sharingTimeRemaining!.inMinutes}m'
+                                          : 'Sharing',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -931,6 +1121,196 @@ class _MapScreenState extends State<MapScreen> {
                                 );
                               }).toList(),
                             ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // Location Sharing Controls
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.share_location,
+                                  size: 20,
+                                  color: _isSharingLocation ? Colors.green : Colors.blue,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Location Sharing',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Spacer(),
+                                if (_isSharingLocation)
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 6,
+                                          height: 6,
+                                          decoration: BoxDecoration(
+                                            color: Colors.green,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'ACTIVE',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            
+                            if (_isSharingLocation) ...[
+                              // Active sharing status
+                              Container(
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.green.shade200),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.timer, size: 16, color: Colors.green.shade700),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          _sharingTimeRemaining != null
+                                              ? 'Time remaining: ${_sharingTimeRemaining!.inMinutes}m ${(_sharingTimeRemaining!.inSeconds % 60)}s'
+                                              : 'Sharing active',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.green.shade800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Your location is being shared in real-time. Others can see your current position.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              
+                              // Sharing action buttons
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: _shareLocationLink,
+                                      icon: Icon(Icons.share, size: 16),
+                                      label: Text('Share Link'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.blue,
+                                        side: BorderSide(color: Colors.blue.shade300),
+                                        padding: EdgeInsets.symmetric(vertical: 8),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: _stopLocationSharing,
+                                      icon: Icon(Icons.stop, size: 16),
+                                      label: Text('Stop'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.symmetric(vertical: 8),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ] else ...[
+                              // Start sharing controls
+                              Text(
+                                'Share your live location with friends and family for safety. Your location will be shared for a specific duration.',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: _isLocationServiceInitialized 
+                                          ? _showLocationSharingDialog 
+                                          : null,
+                                      icon: Icon(Icons.share_location, size: 16),
+                                      label: Text('Start Sharing'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue,
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.symmetric(vertical: 12),
+                                        disabledBackgroundColor: Colors.grey.shade300,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              
+                              if (!_isLocationServiceInitialized)
+                                Padding(
+                                  padding: EdgeInsets.only(top: 8),
+                                  child: Text(
+                                    'Location service must be enabled to share location',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.orange.shade700,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ],
                         ),
                       ),
@@ -1112,13 +1492,13 @@ class _MapScreenState extends State<MapScreen> {
           }
         },
         backgroundColor: Colors.blue,
+        tooltip: 'My Location',
         child: Icon(
           _isLocationServiceInitialized 
             ? Icons.my_location
             : Icons.location_searching,
           color: Colors.white,
         ),
-        tooltip: 'My Location',
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: BottomNavigation(

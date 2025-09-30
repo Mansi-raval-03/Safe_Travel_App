@@ -45,5 +45,17 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- Google Maps API Key -->
+	<key>GoogleMapsAPIKey</key>
+	<string>AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao</string>
+	
+	<!-- Location permissions -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs access to your location to provide safety features and real-time location sharing.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs access to your location in background to provide emergency safety features.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app needs access to your location to provide continuous safety tracking.</string>
 </dict>
 </plist>
