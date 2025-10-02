@@ -3,7 +3,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/emergency_contact_service.dart';
+import '../services/direct_sos_service.dart';
 import '../screens/add_edit_contact_screen.dart';
+import '../screens/emergency_chat_screen.dart';
 
 // ------------------ Emergency Screen ------------------
 class EmergencyScreen extends StatefulWidget {
@@ -23,6 +25,8 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   bool _isLoading = true;
   bool _isSOSLoading = false;
   String? _errorMessage;
+  final DirectSOSService _directSOSService = DirectSOSService.instance;
+  bool _isOfflineMode = false;
 
   @override
   void initState() {
@@ -121,6 +125,16 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     }
   }
 
+  /// Open chat screen with contact
+  void _openChat(EmergencyContact contact) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EmergencyChatScreen(contact: contact),
+      ),
+    );
+  }
+
   /// Delete contact with confirmation
   Future<void> _deleteContact(EmergencyContact contact) async {
     final confirmed = await showDialog<bool>(
@@ -168,57 +182,103 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     }
   }
 
-  /// Send SOS Alert to all contacts
-  Future<void> _sendSOSAlert() async {
+  /// Send Direct SOS Alert to all contacts with SMS and WhatsApp
+  Future<void> _sendDirectSOSAlert() async {
+    if (_contacts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No emergency contacts found. Please add contacts first.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSOSLoading = true;
     });
 
     try {
-      // Get current location
-      Position? position;
-      try {
-        final locationPermission = await Permission.location.request();
-        if (locationPermission.isGranted) {
-          position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high,
-            timeLimit: const Duration(seconds: 10),
-          );
-        }
-      } catch (e) {
-        print('Could not get location: $e');
-      }
+      // Initialize offline mode
+      await _directSOSService.initializeOfflineMode();
+      
+      // Get offline status
+      final offlineStatus = _directSOSService.getOfflineStatus();
+      setState(() {
+        _isOfflineMode = offlineStatus['isOffline'];
+      });
 
-      // Send SOS alert
-      await EmergencyContactService.sendSOSAlert(
-        latitude: position?.latitude ?? 0.0,
-        longitude: position?.longitude ?? 0.0,
-        customMessage: 'Emergency! I need help. Please contact me immediately.',
+      // Send direct SOS with SMS and WhatsApp
+      final result = await _directSOSService.sendDirectSOS(
+        contacts: _contacts,
+        customMessage: 'URGENT EMERGENCY! I need immediate help. Please contact me right away!',
+        includeWhatsApp: true,
+        includeSMS: true,
       );
 
       if (mounted) {
-        // Show confirmation dialog
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-            title: const Text('SOS Alert Sent'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Emergency alert sent to ${_contacts.length} contact(s)'),
-                if (position != null) 
-                  const Text('\nLocation included in alert'),
+        if (result['success']) {
+          // Show success dialog with details
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              icon: Icon(
+                Icons.check_circle,
+                color: _isOfflineMode ? Colors.orange : Colors.green,
+                size: 48,
+              ),
+              title: Text(_isOfflineMode ? 'SOS Sent (Offline Mode)' : 'SOS Alert Sent'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Emergency alert sent to ${_contacts.length} contact(s)'),
+                  SizedBox(height: 8),
+                  if (result['smsCount'] > 0)
+                    Text('📱 SMS: ${result['smsCount']} sent', 
+                      style: TextStyle(color: Colors.green)),
+                  if (result['whatsappCount'] > 0)
+                    Text('💬 WhatsApp: ${result['whatsappCount']} sent',
+                      style: TextStyle(color: Colors.green)),
+                  if (_isOfflineMode)
+                    const Text('\n📵 Sent in offline mode - Messages may have delays',
+                      style: TextStyle(color: Colors.orange, fontSize: 12)),
+                  if (result['errors'].isNotEmpty)
+                    Text('\n⚠️ Some messages failed to send',
+                      style: TextStyle(color: Colors.red, fontSize: 12)),
+                ],
+              ),
+              actions: [
+                if (result['errors'].isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _showErrorDetails(result['errors']);
+                    },
+                    child: const Text('View Errors'),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
+          );
+        } else {
+          // Show error dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to send SOS alert: ${result['error'] ?? 'Unknown error'}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: _sendDirectSOSAlert,
               ),
-            ],
-          ),
-        );
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -227,6 +287,11 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
             content: Text('Error sending SOS: ${e.toString().replaceFirst('Exception: ', '')}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _sendDirectSOSAlert,
+            ),
           ),
         );
       }
@@ -237,6 +302,32 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
         });
       }
     }
+  }
+
+  /// Show error details dialog
+  void _showErrorDetails(List<String> errors) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Message Errors'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: errors.map((error) => 
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text('• $error', style: TextStyle(fontSize: 14)),
+            )
+          ).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Navigate to add/edit contact screen
@@ -298,7 +389,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
           ? FloatingActionButton.extended(
               backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
-              onPressed: _isSOSLoading ? null : _sendSOSAlert,
+              onPressed: _isSOSLoading ? null : _sendDirectSOSAlert,
               icon: _isSOSLoading 
                   ? const SizedBox(
                       width: 20,
@@ -576,7 +667,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => _sendSms(contact.phone, contact.name),
@@ -584,6 +675,22 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                     label: const Text('SMS'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _openChat(contact),
+                    icon: const Icon(Icons.chat, size: 18),
+                    label: const Text('Chat'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
                       foregroundColor: Colors.white,
                       elevation: 2,
                       shape: RoundedRectangleBorder(

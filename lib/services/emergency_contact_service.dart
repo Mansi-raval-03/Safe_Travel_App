@@ -36,18 +36,31 @@ class EmergencyContactService {
   /// Get all emergency contacts for the authenticated user
   static Future<List<EmergencyContact>> getAllContacts() async {
     try {
+      print('🔄 Fetching emergency contacts from API...');
+      print('🌐 API URL: $baseUrl/emergency-contacts');
+      
       final headers = await _getAuthHeaders();
+      print('🔑 Auth headers: ${headers.keys.join(', ')}');
+      
       final response = await http.get(
         Uri.parse('$baseUrl/emergency-contacts'),
         headers: headers,
       );
       
+      print('📡 API Response Status: ${response.statusCode}');
+      print('📄 API Response Body: ${response.body}');
+      
       final responseData = _handleResponse(response);
       final List<dynamic> contactsJson = responseData['data']['contacts'];
       
-      return contactsJson
+      print('📊 Raw contacts data: $contactsJson');
+      
+      final contacts = contactsJson
           .map((json) => EmergencyContact.fromJson(json))
           .toList();
+          
+      print('✅ Successfully parsed ${contacts.length} emergency contacts');
+      return contacts;
           
     } catch (e) {
       print('Error getting emergency contacts: $e');

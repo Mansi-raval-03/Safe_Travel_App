@@ -8,7 +8,14 @@ class LocationService {
 
   StreamSubscription<Position>? _positionStreamSubscription;
   Position? _currentPosition;
-  final StreamController<Position> _locationController = StreamController<Position>.broadcast();
+  StreamController<Position>? _locationController;
+  
+  StreamController<Position> get locationController {
+    if (_locationController == null || _locationController!.isClosed) {
+      _locationController = StreamController<Position>.broadcast();
+    }
+    return _locationController!;
+  }
   
   // Real-time location tracking state
   bool _isTracking = false;
@@ -22,7 +29,7 @@ class LocationService {
   int _distanceFilterMeters = 5; // Update every 5 meters
   Duration _timeInterval = const Duration(seconds: 3); // Update every 3 seconds
 
-  Stream<Position> get locationStream => _locationController.stream;
+  Stream<Position> get locationStream => locationController.stream;
   Position? get currentPosition => _currentPosition;
   bool get isTracking => _isTracking;
   bool get isInitialized => _isInitialized;
@@ -58,7 +65,9 @@ class LocationService {
       // Get initial position with high accuracy
       _currentPosition = await getCurrentLocation();
       if (_currentPosition != null) {
-        _locationController.add(_currentPosition!);
+        if (!locationController.isClosed) {
+          locationController.add(_currentPosition!);
+        }
         print('✅ Location service initialized successfully');
         print('📍 Initial position: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
         _isInitialized = true;
@@ -170,7 +179,9 @@ class LocationService {
     ).listen(
       (Position position) {
         _currentPosition = position;
-        _locationController.add(position);
+        if (!locationController.isClosed) {
+          locationController.add(position);
+        }
         
         print('📍 Location update: ${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}');
         print('🎯 Accuracy: ${position.accuracy.toStringAsFixed(1)}m, Speed: ${position.speed.toStringAsFixed(1)}m/s');
@@ -371,7 +382,10 @@ class LocationService {
   void dispose() {
     print('🧹 Disposing location service...');
     stopLocationTracking();
-    _locationController.close();
+    if (_locationController != null && !_locationController!.isClosed) {
+      _locationController!.close();
+      _locationController = null;
+    }
     _isInitialized = false;
     print('✅ Location service disposed');
   }

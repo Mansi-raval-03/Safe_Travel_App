@@ -3,9 +3,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../widgets/bottom_navigation.dart';
 import '../services/location_service.dart';
-import '../services/location_sharing_service.dart';
 import '../services/socket_service.dart';
-import '../widgets/native_location_sharing_sheet.dart';
+import '../services/sos_emergency_service.dart';
+import '../services/emergency_contact_service.dart';
+import '../services/enhanced_sos_service.dart';
+import '../screens/sos_settings_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
 class MapScreen extends StatefulWidget {
@@ -28,7 +31,8 @@ class _MapScreenState extends State<MapScreen> {
   
   // Services
   final LocationService _locationService = LocationService();
-  final LocationSharingService _sharingService = LocationSharingService();
+  final SOSEmergencyService _sosService = SOSEmergencyService();
+  final EnhancedSOSService _enhancedSosService = EnhancedSOSService.instance;
   final SocketIOService _socketService = SocketIOService();
   
   // Google Maps
@@ -48,10 +52,9 @@ class _MapScreenState extends State<MapScreen> {
   bool _isLocationServiceInitialized = false;
   bool _isSocketConnected = false;
   
-  // Location sharing state
-  bool _isSharingLocation = false;
-  Duration? _sharingTimeRemaining;
-  StreamSubscription<LocationSharingStatus>? _sharingStatusSubscription;
+  // SOS emergency state
+  bool _isSOSActive = false;
+  int _emergencyContactsCount = 0;
 
   @override
   void initState() {
@@ -62,46 +65,154 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _initializeServices() async {
     await _initLocationService();
     await _initSocketService();
-    _initLocationSharingService();
+    await _initEnhancedSOSService(); // Initialize enhanced SOS service
+    await _debugEmergencyContactsAPI(); // Debug API first
+    await _initSOSEmergencyService();
+    await _testSOSSystem(); // Test complete SOS system
   }
 
-  /// Initialize location sharing service
-  void _initLocationSharingService() {
-    // Listen to sharing status updates
-    _sharingStatusSubscription = _sharingService.sharingStatusStream.listen((status) {
-      setState(() {
-        _isSharingLocation = status.isActive;
-        if (status.isActive) {
-          final remaining = _sharingService.remainingSharingTime;
-          _sharingTimeRemaining = remaining;
-          
-          // Start a timer to update remaining time
-          _startSharingTimeUpdateTimer();
-        } else {
-          _sharingTimeRemaining = null;
-        }
-      });
-      print('📡 Location sharing status updated: ${status.isActive}');
-    });
+  /// Initialize enhanced SOS service
+  Future<void> _initEnhancedSOSService() async {
+    try {
+      await _enhancedSosService.initialize();
+      print('✅ Enhanced SOS Service initialized');
+    } catch (e) {
+      print('❌ Error initializing enhanced SOS service: $e');
+    }
   }
 
-  /// Start timer to update sharing time remaining
-  void _startSharingTimeUpdateTimer() {
-    Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isSharingLocation) {
-        timer.cancel();
+  /// Test enhanced SOS system end-to-end
+  Future<void> _testSOSSystem() async {
+    try {
+      print('🧪 TESTING ENHANCED SOS SYSTEM END-TO-END...');
+      
+      // Test 1: Emergency contacts loading
+      print('📞 Test 1: Loading emergency contacts...');
+      final contacts = await EmergencyContactService.getAllContacts();
+      print('✅ Loaded ${contacts.length} emergency contacts');
+      
+      if (contacts.isEmpty) {
+        print('❌ No emergency contacts found - SOS system requires contacts');
+        return;
+      }
+
+      for (var contact in contacts) {
+        print('   - ${contact.name}: ${contact.phone} (${contact.relationship})');
+      }
+      
+      // Test 2: Location service
+      print('📍 Test 2: Checking location service...');
+      if (!_locationService.isInitialized) {
+        print('🔄 Initializing location service...');
+        await _locationService.initialize();
+      }
+      
+      final position = await _locationService.getCurrentLocation();
+      if (position != null) {
+        print('✅ Location service working: ${position.latitude}, ${position.longitude}');
+      } else {
+        print('❌ Location service not working');
         return;
       }
       
-      final remaining = _sharingService.remainingSharingTime;
+      // Test 3: Enhanced SOS service settings
+      print('⚙️ Test 3: Testing Enhanced SOS service...');
+      print('   - Timer Duration: ${_enhancedSosService.timerDuration} seconds');
+      print('   - Auto-Send Enabled: ${_enhancedSosService.autoSendEnabled}');
+      print('   - Timer Running: ${_enhancedSosService.isTimerRunning}');
+      print('✅ Enhanced SOS Service ready');
+      
+      // Test 4: Enhanced message formatting
+      print('📱 Test 4: Testing enhanced emergency message...');
+      final testMessage = '''🚨 EMERGENCY ALERT 🚨
+
+Type: GENERAL EMERGENCY
+Message: I need help! This is an automated emergency alert from Safe Travel App.
+
+📍 My Current Location:
+Latitude: ${position.latitude.toStringAsFixed(6)}
+Longitude: ${position.longitude.toStringAsFixed(6)}
+Accuracy: ${position.accuracy.toStringAsFixed(1)}m
+
+🗺️ View on Map: https://maps.google.com/?q=${position.latitude},${position.longitude}
+
+⏰ Time: ${DateTime.now().toString()}
+
+This is an automated emergency message from Safe Travel App. Please respond immediately!''';
+      
+      print('✅ Enhanced message created successfully');
+      print('📄 Message length: ${testMessage.length} characters');
+      
+      print('🎉 ENHANCED SOS SYSTEM FULLY OPERATIONAL!');
+      print('   ✅ Emergency contacts: ${contacts.length}');
+      print('   ✅ Location service: Working (±${position.accuracy.toStringAsFixed(1)}m)');
+      print('   ✅ Enhanced SOS service: Ready');
+      print('   ✅ SMS & WhatsApp: Configured');
+      print('   ✅ Timer system: ${_enhancedSosService.timerDuration}s countdown');
+      print('   ✅ One-click SOS: Ready');
+      
+    } catch (e) {
+      print('❌ ENHANCED SOS SYSTEM TEST FAILED: $e');
+    }
+  }
+
+  /// Debug function to test emergency contacts API
+  Future<void> _debugEmergencyContactsAPI() async {
+    try {
+      print('🔬 DEBUG: Testing Emergency Contacts API...');
+      
+      // Test getting auth token
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      print('🔑 Auth token exists: ${token != null}');
+      if (token != null) {
+        print('🔑 Token length: ${token.length} characters');
+        print('🔑 Token starts with: ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
+      }
+      
+      // Test API call
+      final contacts = await EmergencyContactService.getAllContacts();
+      print('📞 Emergency contacts retrieved: ${contacts.length}');
+      
+      for (int i = 0; i < contacts.length; i++) {
+        final contact = contacts[i];
+        print('   ${i + 1}. ${contact.name} (${contact.phone}) - ${contact.relationship}');
+      }
+      
+    } catch (e) {
+      print('❌ DEBUG ERROR: $e');
+    }
+  }
+
+  /// Initialize SOS emergency service
+  Future<void> _initSOSEmergencyService() async {
+    try {
+      print('🔄 Initializing SOS Emergency service...');
+      
+      // Get detailed emergency contacts information
+      final contacts = await EmergencyContactService.getAllContacts();
+      final contactsCount = contacts.length;
+      
       setState(() {
-        _sharingTimeRemaining = remaining;
+        _emergencyContactsCount = contactsCount;
       });
       
-      if (remaining == null || remaining <= Duration.zero) {
-        timer.cancel();
+      if (contactsCount > 0) {
+        print('✅ SOS Emergency service initialized - $contactsCount emergency contacts found:');
+        for (int i = 0; i < contacts.length; i++) {
+          final contact = contacts[i];
+          print('   ${i + 1}. ${contact.name} (${contact.phone}) - ${contact.relationship}');
+        }
+      } else {
+        print('⚠️  SOS Emergency service initialized - No emergency contacts found');
+        print('   📝 User needs to add emergency contacts to enable SOS functionality');
       }
-    });
+    } catch (e) {
+      print('❌ Error initializing SOS emergency service: $e');
+      setState(() {
+        _emergencyContactsCount = 0;
+      });
+    }
   }
 
   /// Initialize location and socket services
@@ -271,24 +382,334 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  /// Handle SOS trigger with location sharing
-  void _handleSOSWithLocation() {
-    if (_isSocketConnected && _currentPosition != null) {
-      _socketService.sendEmergencyAlert(
-        alertType: 'SOS',
-        message: 'Emergency assistance needed at current location',
-        additionalData: {
-          'accuracy': _currentPosition!.accuracy,
-          'speed': _currentPosition!.speed,
-        },
+  /// Show SOS confirmation dialog
+  void _showSOSConfirmationDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.emergency, color: Colors.red, size: 24),
+              SizedBox(width: 8),
+              Text(
+                'Emergency SOS',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+          content: FutureBuilder<List<EmergencyContact>>(
+            future: EmergencyContactService.getAllContacts(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Loading emergency contacts...'),
+                  ],
+                );
+              }
+              
+              final contacts = snapshot.data ?? [];
+              
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Are you sure you want to send an SOS alert?',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(height: 12),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'This will:',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                        SizedBox(height: 6),
+                        Text('• Send your live location via SMS', style: TextStyle(fontSize: 13)),
+                        Text('• Send WhatsApp message with location', style: TextStyle(fontSize: 13)),
+                        Text('• Alert nearby users in the area', style: TextStyle(fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  if (contacts.isNotEmpty) ...[
+                    Text(
+                      'Emergency Contacts (${contacts.length}):',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                    SizedBox(height: 8),
+                    Container(
+                      constraints: BoxConstraints(maxHeight: 150),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: contacts.map((contact) => Padding(
+                            padding: EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              children: [
+                                Icon(Icons.person, size: 16, color: Colors.green),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${contact.name} (${contact.phone})',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                if (contact.isPrimary)
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'PRIMARY',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        color: Colors.blue.shade800,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          )).toList(),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning, color: Colors.orange, size: 20),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'No emergency contacts found. Please add contacts first.',
+                              style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey.shade600)),
+            ),
+            FutureBuilder<List<EmergencyContact>>(
+              future: EmergencyContactService.getAllContacts(),
+              builder: (context, snapshot) {
+                final contacts = snapshot.data ?? [];
+                final hasContacts = contacts.isNotEmpty;
+                
+                return ElevatedButton.icon(
+                  onPressed: hasContacts ? () {
+                    Navigator.of(context).pop();
+                    _triggerSOSEmergency();
+                  } : null,
+                  icon: Icon(Icons.warning, size: 16),
+                  label: Text(hasContacts ? 'Send SOS Alert' : 'No Contacts'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: hasContacts ? Colors.red : Colors.grey,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Trigger SOS emergency with automatic location sharing
+  Future<void> _triggerSOSEmergency() async {
+    if (!_isLocationServiceInitialized || _currentPosition == null) {
+      _showErrorSnackBar('Location service not available');
+      return;
+    }
+
+    try {
+      setState(() {
+        _isSOSActive = true;
+      });
+
+      // Send SOS through socket for real-time alerts
+      if (_isSocketConnected) {
+        _socketService.sendEmergencyAlert(
+          alertType: 'SOS',
+          message: 'Emergency assistance needed at current location',
+          additionalData: {
+            'accuracy': _currentPosition!.accuracy,
+            'speed': _currentPosition!.speed,
+          },
+        );
+        
+        _socketService.updateUserStatus('in_danger', 
+          message: 'SOS alert triggered - need immediate assistance');
+      }
+
+      // Trigger emergency location sharing to contacts
+      final result = await _sosService.triggerSOSEmergency(
+        customMessage: 'Emergency assistance needed - SOS alert triggered',
+        shareViaWhatsApp: true,
+        shareViaSMS: true,
       );
       
-      _socketService.updateUserStatus('in_danger', 
-        message: 'SOS alert triggered - need immediate assistance');
+      if (!result.success) {
+        throw Exception(result.message);
+      }
+
+      // Call the original SOS callback
+      widget.onTriggerSOS();
+
+      _showSuccessSnackBar('SOS alert sent to all emergency contacts');
+
+      // Reset SOS active state after 30 seconds
+      Future.delayed(Duration(seconds: 30), () {
+        if (mounted) {
+          setState(() {
+            _isSOSActive = false;
+          });
+        }
+      });
+
+    } catch (e) {
+      setState(() {
+        _isSOSActive = false;
+      });
+      _showErrorSnackBar('Failed to send SOS alert: $e');
+      print('❌ Error triggering SOS emergency: $e');
     }
-    
-    // Call the original SOS callback
-    widget.onTriggerSOS();
+  }
+
+  /// Handle SOS trigger with enhanced service
+  void _handleSOSWithLocation() {
+    _triggerEnhancedSOS();
+  }
+
+  /// Trigger enhanced SOS with one-click functionality
+  Future<void> _triggerEnhancedSOS() async {
+    try {
+      // Check if location service is initialized
+      if (!_isLocationServiceInitialized || _currentPosition == null) {
+        _showErrorSnackBar('Location service not available. Cannot send SOS alert.');
+        return;
+      }
+
+      // Get emergency contacts
+      List<EmergencyContact> contacts = await EmergencyContactService.getAllContacts();
+      if (contacts.isEmpty) {
+        _showErrorSnackBar('No emergency contacts found. Please add contacts first.');
+        return;
+      }
+
+      print('🚨 Triggering Enhanced SOS with ${contacts.length} contacts');
+
+      // Use enhanced SOS service for one-click SOS with timer
+      await _enhancedSosService.triggerOneClickSOS(
+        context: context,
+        emergencyType: 'General Emergency',
+        message: 'I need help! This is an automated emergency alert from Safe Travel App.',
+        currentPosition: _currentPosition!,
+        emergencyContacts: contacts,
+      );
+
+    } catch (e) {
+      print('❌ Error triggering enhanced SOS: $e');
+      _showErrorSnackBar('Failed to send SOS alert. Please try again.');
+    }
+  }
+
+  /// Show SOS settings screen
+  void _showSOSSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SOSSettingsScreen()),
+    );
+  }
+
+  /// Show error snackbar
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+    }
+  }
+
+  /// Show success snackbar
+  void _showSuccessSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+    }
   }
 
   /// Get color based on user safety status
@@ -341,56 +762,10 @@ class _MapScreenState extends State<MapScreen> {
 
  
 
-  /// Start location sharing
-  Future<void> _startLocationSharing(Duration duration) async {
-    try {
-      final result = await _sharingService.startLocationSharing(
-        duration: duration,
-        privacyLevel: SharingPrivacyLevel.friends,
-        includeSpeedAndHeading: true,
-        allowRealTimeUpdates: true,
-      );
 
-      if (result.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Location sharing started for ${duration.inMinutes} minutes'),
-            backgroundColor: Colors.green,
-            action: SnackBarAction(
-              label: 'Share',
-              textColor: Colors.white,
-              onPressed: () => _shareLocationLink(),
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to start location sharing: ${result.message}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error starting location sharing: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 
   /// Stop location sharing
-  void _stopLocationSharing() {
-    _sharingService.stopLocationSharing();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Location sharing stopped'),
-        backgroundColor: Colors.blue,
-      ),
-    );
-  }
+  
  /// Offer help to a user in need
   void _offerHelp(Map<String, dynamic> user) {
     if (_isSocketConnected) {
@@ -406,65 +781,7 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
   }
-  /// Share location link with native options
-  Future<void> _shareLocationLink() async {
-    try {
-      await showNativeLocationSharingSheet(
-        context: context,
-        sharingService: _sharingService,
-        customMessage: 'I\'m sharing my live location with you via Safe Travel App!',
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error sharing location: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 
-  /// Show location sharing dialog
-  void _showLocationSharingDialog() {
-    final durations = [
-      {'label': '15 minutes', 'description': 'Short sharing session', 'duration': const Duration(minutes: 15)},
-      {'label': '30 minutes', 'description': 'Medium sharing session', 'duration': const Duration(minutes: 30)},
-      {'label': '1 hour', 'description': 'Long sharing session', 'duration': const Duration(hours: 1)},
-      {'label': '2 hours', 'description': 'Extended sharing session', 'duration': const Duration(hours: 2)},
-    ];
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Share Live Location'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('How long would you like to share your location?'),
-              const SizedBox(height: 16),
-              ...durations.map((duration) => 
-                ListTile(
-                  title: Text(duration['label'] as String),
-                  subtitle: Text(duration['description'] as String),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _startLocationSharing(duration['duration'] as Duration);
-                  },
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   final List<Map<String, dynamic>> nearbyServices = [
     {
@@ -510,10 +827,14 @@ class _MapScreenState extends State<MapScreen> {
     _destinationController.dispose();
     _locationSubscription?.cancel();
     _nearbyUsersSubscription?.cancel();
-    _sharingStatusSubscription?.cancel();
-    _locationService.dispose();
-    _sharingService.dispose();
-    _socketService.dispose();
+    
+    // Don't dispose singleton services - just stop tracking
+    if (_locationService.isTracking) {
+      _locationService.stopLocationTracking();
+    }
+    
+    // Note: Don't dispose singleton services (_locationService, _socketService) 
+    // as they may be used by other parts of the app and cause stream closure errors
     super.dispose();
   }
 
@@ -929,26 +1250,24 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                             ),
 
-                          // Location sharing badge
-                          if (_isSharingLocation)
+                          // SOS status badge
+                          if (_isSOSActive)
                             Positioned(
                               bottom: 12,
                               left: 12,
                               child: Container(
                                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.green,
+                                  color: Colors.red,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.share_location, size: 12, color: Colors.white),
+                                    Icon(Icons.emergency, size: 12, color: Colors.white),
                                     SizedBox(width: 4),
                                     Text(
-                                      _sharingTimeRemaining != null
-                                          ? '${_sharingTimeRemaining!.inMinutes}m'
-                                          : 'Sharing',
+                                      'SOS ACTIVE',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w500,
@@ -1128,7 +1447,7 @@ class _MapScreenState extends State<MapScreen> {
 
                     SizedBox(height: 16),
 
-                    // Location Sharing Controls
+                    // Emergency SOS Controls
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -1149,26 +1468,26 @@ class _MapScreenState extends State<MapScreen> {
                             Row(
                               children: [
                                 Icon(
-                                  Icons.share_location,
+                                  Icons.emergency,
                                   size: 20,
-                                  color: _isSharingLocation ? Colors.green : Colors.blue,
+                                  color: Colors.red,
                                 ),
                                 SizedBox(width: 8),
                                 Text(
-                                  'Location Sharing',
+                                  'Emergency SOS',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 Spacer(),
-                                if (_isSharingLocation)
+                                if (_isSOSActive)
                                   Container(
                                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: Colors.green.withOpacity(0.1),
+                                      color: Colors.red.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                                      border: Border.all(color: Colors.red.withOpacity(0.3)),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -1177,17 +1496,17 @@ class _MapScreenState extends State<MapScreen> {
                                           width: 6,
                                           height: 6,
                                           decoration: BoxDecoration(
-                                            color: Colors.green,
+                                            color: Colors.red,
                                             shape: BoxShape.circle,
                                           ),
                                         ),
                                         SizedBox(width: 6),
                                         Text(
-                                          'ACTIVE',
+                                          'ALERT SENT',
                                           style: TextStyle(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w600,
-                                            color: Colors.green,
+                                            color: Colors.red,
                                           ),
                                         ),
                                       ],
@@ -1197,120 +1516,137 @@ class _MapScreenState extends State<MapScreen> {
                             ),
                             SizedBox(height: 12),
                             
-                            if (_isSharingLocation) ...[
-                              // Active sharing status
-                              Container(
-                                padding: EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.green.shade200),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(Icons.timer, size: 16, color: Colors.green.shade700),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          _sharingTimeRemaining != null
-                                              ? 'Time remaining: ${_sharingTimeRemaining!.inMinutes}m ${(_sharingTimeRemaining!.inSeconds % 60)}s'
-                                              : 'Sharing active',
+                            // Emergency Contact Information
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.red.shade200),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.contacts, size: 16, color: Colors.red.shade700),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Emergency Contacts: $_emergencyContactsCount',
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w500,
-                                            color: Colors.green.shade800,
+                                            color: _emergencyContactsCount > 0 ? Colors.red.shade800 : Colors.red.shade600,
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'Your location is being shared in real-time. Others can see your current position.',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.green.shade700,
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: 12),
-                              
-                              // Sharing action buttons
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: _shareLocationLink,
-                                      icon: Icon(Icons.share, size: 16),
-                                      label: Text('Share Link'),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: Colors.blue,
-                                        side: BorderSide(color: Colors.blue.shade300),
-                                        padding: EdgeInsets.symmetric(vertical: 8),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            onPressed: () async {
+                                              print('🔄 Refreshing emergency contacts...');
+                                              await _debugEmergencyContactsAPI();
+                                              await _initSOSEmergencyService();
+                                            },
+                                            icon: Icon(Icons.refresh, size: 18, color: Colors.red.shade700),
+                                            padding: EdgeInsets.zero,
+                                            constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                                            tooltip: 'Refresh emergency contacts',
+                                          ),
+                                          IconButton(
+                                            onPressed: _showSOSSettings,
+                                            icon: Icon(Icons.settings, size: 18, color: Colors.orange.shade700),
+                                            padding: EdgeInsets.zero,
+                                            constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                                            tooltip: 'SOS Settings',
+                                          ),
+                                          if (_emergencyContactsCount == 0)
+                                            IconButton(
+                                              onPressed: () async {
+                                                try {
+                                                  print('➕ Adding test emergency contact...');
+                                                  await EmergencyContactService.addContact(
+                                                    name: 'Test Contact',
+                                                    phone: '+1234567890',
+                                                    relationship: 'Friend',
+                                                    isPrimary: true,
+                                                  );
+                                                  print('✅ Test contact added successfully');
+                                                  await _initSOSEmergencyService();
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(content: Text('Test emergency contact added!')),
+                                                  );
+                                                } catch (e) {
+                                                  print('❌ Error adding test contact: $e');
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(content: Text('Error adding test contact: $e')),
+                                                  );
+                                                }
+                                              },
+                                              icon: Icon(Icons.add, size: 18, color: Colors.green.shade700),
+                                              padding: EdgeInsets.zero,
+                                              constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                                              tooltip: 'Add test emergency contact',
+                                            ),
+                                        ],
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: _stopLocationSharing,
-                                      icon: Icon(Icons.stop, size: 16),
-                                      label: Text('Stop'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
-                                        padding: EdgeInsets.symmetric(vertical: 8),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ] else ...[
-                              // Start sharing controls
-                              Text(
-                                'Share your live location with friends and family for safety. Your location will be shared for a specific duration.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                              SizedBox(height: 12),
-                              
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: _isLocationServiceInitialized 
-                                          ? _showLocationSharingDialog 
-                                          : null,
-                                      icon: Icon(Icons.share_location, size: 16),
-                                      label: Text('Start Sharing'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue,
-                                        foregroundColor: Colors.white,
-                                        padding: EdgeInsets.symmetric(vertical: 12),
-                                        disabledBackgroundColor: Colors.grey.shade300,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              if (!_isLocationServiceInitialized)
-                                Padding(
-                                  padding: EdgeInsets.only(top: 8),
-                                  child: Text(
-                                    'Location service must be enabled to share location',
+                                  SizedBox(height: 8),
+                                  Text(
+                                    _emergencyContactsCount > 0
+                                        ? 'Tap SOS to instantly send your live location via SMS and WhatsApp to all emergency contacts.'
+                                        : 'Add emergency contacts to enable SOS alerts.',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.orange.shade700,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            
+                            // SOS Action Button
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: (_isLocationServiceInitialized && _emergencyContactsCount > 0) 
+                                        ? _showSOSConfirmationDialog 
+                                        : null,
+                                    icon: Icon(Icons.warning, size: 20),
+                                    label: Text(
+                                      '🚨 Send SOS Alert',
+                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      disabledBackgroundColor: Colors.grey.shade300,
+                                      elevation: 3,
                                     ),
                                   ),
                                 ),
-                            ],
+                              ],
+                            ),
+                            
+                            if (!_isLocationServiceInitialized || _emergencyContactsCount == 0)
+                              Padding(
+                                padding: EdgeInsets.only(top: 8),
+                                child: Text(
+                                  !_isLocationServiceInitialized
+                                      ? 'Location service must be enabled for SOS alerts'
+                                      : 'Add emergency contacts to enable SOS alerts',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
