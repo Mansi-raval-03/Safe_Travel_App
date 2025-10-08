@@ -576,6 +576,128 @@ class OfflineDatabaseService {
     }
   }
 
+  /// Get unsynced locations for background sync
+  Future<List<Map<String, dynamic>>> getUnsyncedLocations() async {
+    try {
+      final db = await database;
+      final locations = await db.query(
+        tableLocations,
+        where: 'is_synced = ?',
+        whereArgs: [0],
+        orderBy: 'timestamp ASC',
+        limit: 100, // Sync in batches
+      );
+      
+      print('📍 Retrieved ${locations.length} unsynced locations');
+      return locations;
+    } catch (e) {
+      print('❌ Error getting unsynced locations: $e');
+      return [];
+    }
+  }
+
+  /// Mark locations as synced after successful upload
+  Future<void> markLocationsSynced([List<int>? locationIds]) async {
+    try {
+      final db = await database;
+      
+      if (locationIds != null && locationIds.isNotEmpty) {
+        // Mark specific locations as synced
+        final batch = db.batch();
+        for (final id in locationIds) {
+          batch.update(
+            tableLocations,
+            {'is_synced': 1},
+            where: 'id = ?',
+            whereArgs: [id],
+          );
+        }
+        await batch.commit();
+        print('✅ Marked ${locationIds.length} locations as synced');
+      } else {
+        // Mark all unsynced locations as synced
+        final count = await db.update(
+          tableLocations,
+          {'is_synced': 1},
+          where: 'is_synced = ?',
+          whereArgs: [0],
+        );
+        print('✅ Marked $count locations as synced');
+      }
+    } catch (e) {
+      print('❌ Error marking locations as synced: $e');
+    }
+  }
+
+  /// Store location data with sync information
+  Future<int> storeLocation(Map<String, dynamic> locationData) async {
+    try {
+      final db = await database;
+      
+      // Ensure required fields with defaults
+      final data = {
+        'latitude': locationData['latitude'],
+        'longitude': locationData['longitude'],
+        'accuracy': locationData['accuracy'] ?? 0.0,
+        'altitude': locationData['altitude'] ?? 0.0,
+        'heading': locationData['heading'] ?? 0.0,
+        'speed': locationData['speed'] ?? 0.0,
+        'timestamp': locationData['timestamp'] ?? DateTime.now().millisecondsSinceEpoch,
+        'is_synced': 0,
+      };
+
+      final id = await db.insert(tableLocations, data);
+      print('📍 Location stored with ID: $id');
+      return id;
+    } catch (e) {
+      print('❌ Error storing location: $e');
+      return -1;
+    }
+  }
+
+  /// Get service statistics for monitoring
+  Future<Map<String, dynamic>> getServiceStats() async {
+    try {
+      final db = await database;
+      
+      final totalLocations = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM $tableLocations',
+      );
+      
+      final unsyncedLocations = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM $tableLocations WHERE is_synced = 0',
+      );
+      
+      final totalSOS = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM $tableSOSAlerts',
+      );
+      
+      final unsyncedSOS = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM $tableSOSAlerts WHERE is_synced = 0',
+      );
+
+      final stats = {
+        'totalLocations': totalLocations.first['count'] ?? 0,
+        'unsyncedLocations': unsyncedLocations.first['count'] ?? 0,
+        'totalSOSAlerts': totalSOS.first['count'] ?? 0,
+        'unsyncedSOSAlerts': unsyncedSOS.first['count'] ?? 0,
+        'lastUpdate': DateTime.now().toIso8601String(),
+      };
+      
+      print('📊 Service stats: $stats');
+      return stats;
+    } catch (e) {
+      print('❌ Error getting service stats: $e');
+      return {
+        'totalLocations': 0,
+        'unsyncedLocations': 0,
+        'totalSOSAlerts': 0,
+        'unsyncedSOSAlerts': 0,
+        'lastUpdate': DateTime.now().toIso8601String(),
+      };
+    }
+  }
+
   /// Close database connection
   Future<void> close() async {
     if (_database != null) {

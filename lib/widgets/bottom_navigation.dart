@@ -13,15 +13,21 @@ class BottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: Offset(0, -2),
+            color: Color(0x08000000), // Very subtle shadow
+            blurRadius: 20,
+            offset: Offset(0, -4),
           ),
         ],
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFFE2E8F0), // Light border
+            width: 1,
+          ),
+        ),
       ),
       child: BottomNavigationBar(
         currentIndex: currentIndex,
@@ -38,41 +44,48 @@ class BottomNavigation extends StatelessWidget {
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        selectedItemColor: Color(0xFF3B82F6),
-        unselectedItemColor: Colors.grey.shade500,
+        selectedItemColor: const Color(0xFF6366F1), // Professional indigo
+        unselectedItemColor: const Color(0xFF9CA3AF), // Professional gray
         selectedFontSize: 12,
         unselectedFontSize: 12,
         elevation: 0,
         items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
             label: 'Home',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.map_rounded),
             label: 'Map',
           ),
           BottomNavigationBarItem(
             icon: Container(
-              padding: EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Color(0xFFEF4444),
+                color: const Color(0xFFFF6B6B), // Softer emergency red
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF6B6B).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              child: Icon(
-                Icons.shield,
+              child: const Icon(
+                Icons.shield_rounded,
                 color: Colors.white,
                 size: 20,
               ),
             ),
             label: 'SOS',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.people_rounded),
             label: 'Contacts',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person_rounded),
             label: 'Profile',
           ),
         ],

@@ -18,6 +18,22 @@ class ApiConfig {
     // Switch to developmentUrl for Android emulator
     return productionUrl; // Using Render backend
   }
+
+  // Socket.IO URLs (remove /api/v1 suffix for socket connection)
+  static const String socketBaseUrl = 'http://10.0.2.2:3000'; // Android emulator
+  static const String socketLocalhostUrl = 'http://localhost:3000'; // Desktop/Web
+  static const String socketLocalNetworkUrl = 'http://192.168.1.100:3000'; // Replace with your IP
+  static const String socketDevelopmentUrl = 'http://10.0.2.2:3000';
+  static const String socketProductionUrl = 'https://safe-travel-app-backend.onrender.com';
+  static const String socketLocalUrl = 'http://localhost:3000';
+  
+  // Get the current Socket.IO URL based on environment
+  static String get currentSocketUrl {
+    // Using production Render deployment for Socket.IO
+    // Switch to socketLocalUrl for local development
+    // Switch to socketDevelopmentUrl for Android emulator
+    return socketProductionUrl; // Using Render backend for Socket.IO
+  }
   
   // Common headers for API requests
   static Map<String, String> get commonHeaders => {
