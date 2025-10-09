@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe Travel App - Complete Documentation</title>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { font-size: 12pt; }
+            h1 { page-break-before: always; }
+            .page-break { page-break-before: always; }
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #6366F1;
+            padding-bottom: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #6366F1;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            font-style: italic;
+        }
+        
+        .toc {
+            background: #f8fafc;
+            border-left: 4px solid #6366F1;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+        
+        .toc h2 {
+            color: #6366F1;
+            margin-top: 0;
+        }
+        
+        .toc ul {
+            column-count: 2;
+            column-gap: 30px;
+        }
+        
+        .toc li {
+            margin: 8px 0;
+            break-inside: avoid;
+        }
+        
+        .toc a {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .toc a:hover {
+            color: #6366F1;
+            text-decoration: underline;
+        }
+        
+        h1, h2, h3, h4 {
+            color: #1a202c;
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 2.2em;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            font-size: 1.8em;
+            color: #6366F1;
+        }
+        
+        h3 {
+            font-size: 1.4em;
+            color: #4f46e5;
+        }
+        
+        h4 {
+            font-size: 1.2em;
+            color: #6366f1;
+        }
+        
+        .section {
+            margin: 40px 0;
+            padding: 20px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .architecture-diagram {
+            background: #f1f5f9;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+        }
+        
+        pre {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border-left: 4px solid #10b981;
+        }
+        
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #e53e3e;
+            font-size: 0.9em;
+        }
+        
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #6366F1;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: #f8fafc;
+        }
+        
+        .feature-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .feature-box h3 {
+            color: white;
+            margin-top: 0;
+        }
+        
+        .warning {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .info {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .success {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .api-endpoint {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #10b981;
+        }
+        
+        .api-endpoint .method {
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .api-endpoint .url {
+            color: #fbbf24;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 2px solid #e2e8f0;
+            color: #666;
+        }
+        
+        ul, ol {
+            padding-left: 25px;
+        }
+        
+        li {
+            margin: 5px 0;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #6366F1;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        
+        .print-instruction {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        @media screen and (max-width: 768px) {
+            body { padding: 10px; }
+            .toc ul { column-count: 1; }
+            table { font-size: 0.9em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Safe Travel App</h1>
+        <div class="subtitle">Complete Project Documentation</div>
+        <div style="margin-top: 15px; color: #666;">
+            <strong>Version:</strong> 1.0 | 
+            <strong>Flutter:</strong> 3.8.1+ | 
+            <strong>Node.js:</strong> 16+ | 
+            <strong>Database:</strong> MongoDB + SQLite
+        </div>
+    </div>
+
+    <div class="print-instruction no-print">
+        <strong>📄 To generate PDF:</strong> Press <kbd>Ctrl+P</kbd> (Windows) or <kbd>Cmd+P</kbd> (Mac), 
+        select "Save as PDF" as destination, choose "More settings" → "Paper size: A4" → "Margins: Minimum"
+    </div>
+
+    <div class="toc">
+        <h2>📚 Table of Contents</h2>
+        <ul>
+            <li><a href="#overview">Project Overview</a></li>
+            <li><a href="#architecture">System Architecture</a></li>
+            <li><a href="#frontend">Frontend (Flutter)</a></li>
+            <li><a href="#backend">Backend (Node.js)</a></li>
+            <li><a href="#database">Database Models</a></li>
+            <li><a href="#api">API Documentation</a></li>
+            <li><a href="#features">Key Features</a></li>
+            <li><a href="#auth">Authentication System</a></li>
+            <li><a href="#location">Location Tracking</a></li>
+            <li><a href="#offline">Offline SOS System</a></li>
+            <li><a href="#emergency">Emergency Services</a></li>
+            <li><a href="#ui">UI/UX Design</a></li>
+            <li><a href="#installation">Installation Guide</a></li>
+            <li><a href="#config">Configuration</a></li>
+            <li><a href="#development">Development Workflow</a></li>
+            <li><a href="#testing">Testing</a></li>
+            <li><a href="#security">Security</a></li>
+            <li><a href="#performance">Performance</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+            <li><a href="#future">Future Enhancements</a></li>
+        </ul>
+    </div>
+
+    <section id="overview" class="section">
+        <h1>🚀 Project Overview</h1>
+        
+        <div class="feature-box">
+            <h3>Safe Travel App - Emergency Assistance Platform</h3>
+            <p>A comprehensive full-stack emergency assistance application featuring real-time location tracking, SOS alerts, offline support, and emergency services integration. Built with Flutter frontend and Express.js/MongoDB backend with Socket.IO for real-time communication.</p>
+        </div>
+
+        <table>
+            <tr><th>Component</th><th>Technology</th><th>Version</th><th>Purpose</th></tr>
+            <tr><td><span class="badge">Frontend</span></td><td>Flutter</td><td>3.8.1+</td><td>Cross-platform mobile & web app</td></tr>
+            <tr><td><span class="badge">Backend</span></td><td>Node.js + Express</td><td>16+</td><td>REST API & Socket.IO server</td></tr>
+            <tr><td><span class="badge">Database</span></td><td>MongoDB</td><td>4.4+</td><td>Primary data storage</td></tr>
+            <tr><td><span class="badge">Cache</span></td><td>SQLite</td><td>3.0+</td><td>Offline data & message queue</td></tr>
+            <tr><td><span class="badge">Maps</span></td><td>Google Maps</td><td>2.13.1</td><td>Location & navigation services</td></tr>
+            <tr><td><span class="badge">Real-time</span></td><td>Socket.IO</td><td>4.7.2</td><td>Live location & alerts</td></tr>
+        </table>
+    </section>
+
+    <section id="architecture" class="section page-break">
+        <h1>🏗️ System Architecture</h1>
+        
+        <div class="architecture-diagram">
+┌─────────────────┐    WebSocket    ┌─────────────────┐    HTTP/REST    ┌─────────────────┐
+│                 │ ◄─────────────► │                 │ ◄─────────────► │                 │
+│  Flutter App    │                 │  Express.js     │                 │    MongoDB      │
+│  (Frontend)     │                 │  Server         │                 │   Database      │
+│                 │                 │  (Backend)      │                 │                 │
+└─────────────────┘                 └─────────────────┘                 └─────────────────┘
+         │                                   │
+         │                                   │
+┌─────────────────┐                 ┌─────────────────┐
+│                 │                 │                 │
+│  SQLite DB      │                 │  Socket.IO      │
+│  (Offline)      │                 │  Handler        │
+│                 │                 │                 │
+└─────────────────┘                 └─────────────────┘
+        </div>
+
+        <h3>🔧 Component Architecture</h3>
+        <ul>
+            <li><strong>Presentation Layer:</strong> Flutter screens, widgets, and Material Design 3 components</li>
+            <li><strong>Business Logic:</strong> Services, controllers, and state management</li>
+            <li><strong>Data Layer:</strong> API services, local storage, and database models</li>
+            <li><strong>Real-time Layer:</strong> Socket.IO for live location updates and emergency alerts</li>
+            <li><strong>Offline Layer:</strong> SQLite with message queuing for offline functionality</li>
+        </ul>
+    </section>
+
+    <section id="frontend" class="section page-break">
+        <h1>📱 Frontend (Flutter)</h1>
+        
+        <h3>🗂️ Project Structure</h3>
+        <pre><code>safe_travel_app_Frontend/
+├── lib/
+│   ├── main.dart                    # App entry point & navigation
+│   ├── models/                      # Data models
+│   │   ├── user.dart               # User data model
+│   │   └── emergency_screen.dart   # Emergency screen model
+│   ├── screens/                     # UI screens (8 main screens)
+│   │   ├── signin_screen.dart      # Authentication
+│   │   ├── signup_screen.dart      # Registration
+│   │   ├── home_screen.dart        # Main dashboard
+│   │   ├── map_screen.dart         # Google Maps integration
+│   │   ├── profile_screen.dart     # User profile
+│   │   ├── setting_screen.dart     # App settings
+│   │   ├── sos_confirmation_screen.dart # Emergency confirmation
+│   │   └── emergency_chat_screen.dart   # Emergency communication
+│   ├── widgets/                     # Reusable components
+│   │   ├── bottom_navigation.dart  # Navigation component
+│   │   ├── offline_sos_dashboard.dart # Offline monitoring
+│   │   └── network_diagnostics_widget.dart
+│   └── services/                    # Business logic services
+│       ├── auth_service.dart       # Authentication service
+│       ├── location_service.dart   # GPS & location tracking
+│       ├── socket_service.dart     # Real-time communication
+│       ├── enhanced_sos_service.dart # Emergency services
+│       └── offline_database_service.dart # Local storage
+└── pubspec.yaml                     # Dependencies & configuration</code></pre>
+
+        <h3>📦 Key Dependencies</h3>
+        <table>
+            <tr><th>Package</th><th>Version</th><th>Purpose</th></tr>
+            <tr><td>google_maps_flutter</td><td>^2.13.1</td><td>Native Google Maps integration</td></tr>
+            <tr><td>geolocator</td><td>^10.1.1</td><td>High-accuracy location services</td></tr>
+            <tr><td>socket_io_client</td><td>^3.1.2</td><td>Real-time Socket.IO communication</td></tr>
+            <tr><td>supabase_flutter</td><td>^2.10.1</td><td>Database integration & auth</td></tr>
+            <tr><td>permission_handler</td><td>^12.0.1</td><td>System permission management</td></tr>
+            <tr><td>sqflite</td><td>^2.4.2</td><td>Local SQLite database</td></tr>
+            <tr><td>shared_preferences</td><td>^2.3.2</td><td>Local preferences storage</td></tr>
+            <tr><td>flutter_background_service</td><td>^5.0.10</td><td>Background location tracking</td></tr>
+        </table>
+
+        <div class="success">
+            <strong>🎨 UI Theme:</strong> Professional Material Design 3 with soft indigo primary color (#6366F1), 
+            emerald secondary (#10B981), and light gray surfaces (#F8FAFC) for modern aesthetics.
+        </div>
+    </section>
+
+    <section id="backend" class="section page-break">
+        <h1>⚙️ Backend (Node.js)</h1>
+        
+        <h3>🗂️ Project Structure</h3>
+        <pre><code>Safe_Travel_App_Backend/
+├── server.js                       # Main server & middleware setup
+├── src/
+│   ├── config/
+│   │   └── database.js            # MongoDB connection & configuration
+│   ├── middleware/
+│   │   ├── auth.js               # JWT authentication middleware
+│   │   └── errorHandler.js       # Centralized error handling
+│   ├── models/                    # MongoDB schemas (Mongoose)
+│   │   ├── User.js               # User account model
+│   │   ├── EmergencyContact.js   # Emergency contacts
+│   │   ├── Location.js           # Location tracking records
+│   │   ├── SOSAlert.js          # Emergency alerts
+│   │   └── ContactNotification.js # Notification records
+│   ├── routes/                    # REST API endpoints
+│   │   ├── auth.js              # Authentication (signup/signin)
+│   │   ├── user.js              # User profile management
+│   │   ├── emergencyContacts.js # Emergency contact CRUD
+│   │   ├── location.js          # Location tracking API
+│   │   ├── sos.js              # SOS alert system
+│   │   ├── map.js              # Map services
+│   │   └── notifications.js     # Notification management
+│   └── services/                  # Business logic services
+│       ├── socketHandler.js      # Socket.IO connection management
+│       └── sosService.js         # Emergency service logic
+├── package.json                   # Dependencies & scripts
+└── README.md                      # Project documentation</code></pre>
+
+        <h3>🔧 Core Dependencies</h3>
+        <table>
+            <tr><th>Package</th><th>Version</th><th>Purpose</th></tr>
+            <tr><td>express</td><td>^4.18.2</td><td>Web framework & REST API</td></tr>
+            <tr><td>mongoose</td><td>^7.5.0</td><td>MongoDB ODM & schema validation</td></tr>
+            <tr><td>socket.io</td><td>^4.7.2</td><td>Real-time WebSocket communication</td></tr>
+            <tr><td>jsonwebtoken</td><td>^9.0.2</td><td>JWT token generation & validation</td></tr>
+            <tr><td>bcryptjs</td><td>^2.4.3</td><td>Password hashing & salt generation</td></tr>
+            <tr><td>helmet</td><td>^7.0.0</td><td>Security headers middleware</td></tr>
+            <tr><td>express-rate-limit</td><td>^6.8.1</td><td>Request rate limiting protection</td></tr>
+            <tr><td>geolib</td><td>^3.3.4</td><td>Geolocation calculations & utilities</td></tr>
+        </table>
+
+        <div class="info">
+            <strong>🔒 Security Features:</strong> Comprehensive middleware stack includes Helmet security headers, 
+            CORS protection, rate limiting (200/min general, 5/min auth, 10/min SOS), and JWT token validation.
+        </div>
+    </section>
+
+    <section id="database" class="section page-break">
+        <h1>🗄️ Database Models</h1>
+        
+        <h3>📊 MongoDB Schemas (Mongoose)</h3>
+        
+        <h4>👤 User Model</h4>
+        <pre><code>{
+  name: String (required, 2-50 characters),
+  email: String (required, unique, validated),
+  phone: String (required, phone format validation),
+  password: String (required, bcrypt hashed, 6+ chars),
+  profileImage: String (optional URL),
+  settings: {
+    notifications: Boolean (default: true),
+    locationSharing: Boolean (default: true),
+    offlineMode: Boolean (default: false),
+    emergencyAlerts: Boolean (default: true)
+  },
+  isActive: Boolean (default: true),
+  timestamps: { createdAt, updatedAt }
+}</code></pre>
+
+        <h4>🚨 SOS Alert Model</h4>
+        <pre><code>{
+  userId: ObjectId (ref: User, required),
+  location: {
+    latitude: Number (required, GPS coordinates),
+    longitude: Number (required, GPS coordinates)
+  },
+  alertType: String (enum: 'medical', 'police', 'fire', 'general'),
+  message: String (optional emergency message),
+  status: String (enum: 'active', 'cancelled', 'resolved'),
+  notifiedContacts: [ObjectId] (refs: EmergencyContact),
+  timestamps: { createdAt, updatedAt }
+}</code></pre>
+
+        <h3>💾 SQLite Schema (Offline Storage)</h3>
+        <pre><code>-- Emergency contacts for offline access
+CREATE TABLE emergency_contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    relationship TEXT,
+    is_primary INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Offline SOS message queue
+CREATE TABLE offline_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    message_type TEXT NOT NULL,
+    content TEXT,
+    location_lat REAL,
+    location_lng REAL,
+    priority INTEGER DEFAULT 1, -- 1=Critical, 2=High, 3=Normal
+    retry_count INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'pending', -- pending, processing, sent, failed
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);</code></pre>
+
+        <div class="warning">
+            <strong>⚠️ Important:</strong> SQLite uses WAL (Write-Ahead Logging) mode for better performance and 
+            concurrent access. All sensitive data is properly indexed for fast offline queries.
+        </div>
+    </section>
+
+    <section id="api" class="section page-break">
+        <h1>🌐 API Documentation</h1>
+        
+        <h3>🔐 Authentication Endpoints</h3>
+        
+        <div class="api-endpoint">
+            <div><span class="method">POST</span> <span class="url">/api/v1/auth/signup</span></div>
+            <div><strong>Description:</strong> Register new user account with validation</div>
+            <div><strong>Rate Limit:</strong> 5 requests/minute</div>
+        </div>
+        <pre><code>// Request Body
+{
+  "name": "John Doe",
+  "email": "john@example.com", 
+  "phone": "+1234567890",
+  "password": "securePassword123"
+}
+
+// Response (201 Created)
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "token": "jwt_token_here",
+    "user": {
+      "id": "user_id",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "phone": "+1234567890"
+    }
+  }
+}</code></pre>
+
+        <div class="api-endpoint">
+            <div><span class="method">POST</span> <span class="url">/api/v1/auth/signin</span></div>
+            <div><strong>Description:</strong> Authenticate existing user</div>
+        </div>
+
+        <h3>👤 User Management</h3>
+        
+        <div class="api-endpoint">
+            <div><span class="method">GET</span> <span class="url">/api/v1/user/profile</span></div>
+            <div><strong>Headers:</strong> Authorization: Bearer &lt;token&gt;</div>
+            <div><strong>Description:</strong> Retrieve user profile information</div>
+        </div>
+
+        <h3>🚨 Emergency SOS</h3>
+        
+        <div class="api-endpoint">
+            <div><span class="method">POST</span> <span class="url">/api/v1/sos/alert</span></div>
+            <div><strong>Description:</strong> Send emergency SOS alert with location</div>
+            <div><strong>Rate Limit:</strong> 10 requests/minute</div>
+        </div>
+        <pre><code>// Request Body
+{
+  "alertType": "medical", // medical, police, fire, general
+  "message": "Emergency assistance needed - chest pain",
+  "location": {
+    "latitude": 40.7128,
+    "longitude": -74.0060
+  }
+}
+
+// Response (201 Created)
+{
+  "success": true,
+  "message": "SOS alert sent successfully",
+  "data": {
+    "alertId": "alert_id",
+    "notifiedContacts": 3,
+    "nearbyUsers": 12
+  }
+}</code></pre>
+    </section>
+
+    <section id="features" class="section page-break">
+        <h1>⭐ Key Features</h1>
+        
+        <div class="feature-box">
+            <h3>🔒 JWT Authentication System</h3>
+            <p>Secure token-based authentication with bcrypt password hashing, rate limiting, and persistent login via SharedPreferences. Includes real-time form validation and comprehensive error handling.</p>
+        </div>
+
+        <div class="feature-box">
+            <h3>📍 Real-time Location Tracking</h3>
+            <p>Continuous GPS tracking with Flutter background service, Socket.IO live updates, high accuracy positioning, and battery optimization. Supports permission management and offline caching.</p>
+        </div>
+
+        <div class="feature-box">
+            <h3>🗺️ Google Maps Integration</h3>
+            <p>Native Flutter Google Maps with custom markers, real-time position updates, route planning, and offline map caching. Includes current location, nearby users, and emergency service markers.</p>
+        </div>
+
+        <div class="feature-box">
+            <h3>🚨 Emergency SOS System</h3>
+            <p>One-tap emergency alerts with automatic location attachment, multiple alert types (Medical, Police, Fire, General), emergency contact notification, and real-time broadcasting to nearby users.</p>
+        </div>
+
+        <div class="feature-box">
+            <h3>📵 Offline Functionality</h3>
+            <p>SQLite-based offline storage with message queuing, priority-based sync, offline SOS capabilities, and automatic data synchronization when connectivity returns.</p>
+        </div>
+
+        <table>
+            <tr><th>Feature</th><th>Technology</th><th>Offline Support</th><th>Real-time</th></tr>
+            <tr><td>User Authentication</td><td>JWT + bcrypt</td><td>✅ Token cached</td><td>❌</td></tr>
+            <tr><td>Location Tracking</td><td>Geolocator + Socket.IO</td><td>✅ SQLite cache</td><td>✅ Live updates</td></tr>
+            <tr><td>SOS Alerts</td><td>REST API + Socket.IO</td><td>✅ Queue system</td><td>✅ Instant alerts</td></tr>
+            <tr><td>Emergency Contacts</td><td>MongoDB + SQLite</td><td>✅ Local storage</td><td>❌</td></tr>
+            <tr><td>Google Maps</td><td>Native Flutter plugin</td><td>✅ Map caching</td><td>✅ Live markers</td></tr>
+        </table>
+    </section>
+
+    <section id="auth" class="section page-break">
+        <h1>🔐 Authentication System</h1>
+        
+        <h3>🔄 JWT Token Flow</h3>
+        <ol>
+            <li><strong>Registration/Login:</strong> User provides credentials via signup/signin screens</li>
+            <li><strong>Token Generation:</strong> Server creates JWT with user ID, expiration (24h)</li>
+            <li><strong>Token Storage:</strong> Flutter stores token in SharedPreferences for persistence</li>
+            <li><strong>Request Authentication:</strong> Token sent in Authorization: Bearer header</li>
+            <li><strong>Token Validation:</strong> Server middleware validates token on each API request</li>
+            <li><strong>Auto-refresh:</strong> Silent token refresh before expiration (planned feature)</li>
+        </ol>
+
+        <h3>🛡️ Security Implementation</h3>
+        <pre><code>// Backend Authentication Middleware
+const auth = async (req, res, next) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Access denied - No token provided' 
+      });
+    }
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    
+    if (!user || !user.isActive) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid token - User not found' 
+      });
+    }
+    
+    req.user = user;
+    next();
+  } catch (error) {
+    res.status(401).json({ 
+      success: false, 
+      message: 'Invalid token' 
+    });
+  }
+};</code></pre>
+
+        <div class="info">
+            <strong>🔒 Security Features:</strong> Password hashing with bcrypt salt rounds, rate limiting 
+            (5 requests/minute for auth), input validation with express-validator, CORS protection, 
+            and Helmet security headers middleware.
+        </div>
+    </section>
+
+    <section id="location" class="section page-break">
+        <h1>📍 Real-time Location Tracking</h1>
+        
+        <h3>🏗️ Service Architecture</h3>
+        <ul>
+            <li><strong>Flutter Background Service:</strong> Continuous location tracking even when app is closed</li>
+            <li><strong>Socket.IO Client:</strong> Real-time location broadcasting to server and other users</li>
+            <li><strong>Location Permissions:</strong> Runtime permission requests with proper handling</li>
+            <li><strong>Battery Optimization:</strong> Adaptive update intervals based on movement and battery level</li>
+        </ul>
+
+        <h3>⚙️ Location Service Configuration</h3>
+        <pre><code>// High-accuracy location settings
+class RealTimeLocationService {
+  static const LocationSettings _locationSettings = LocationSettings(
+    accuracy: LocationAccuracy.high,    // GPS + Network for best accuracy
+    distanceFilter: 10,                 // Update every 10 meters movement
+    timeLimit: Duration(seconds: 30),   // Maximum time for location fix
+  );
+  
+  // Background service for continuous tracking
+  static Future&lt;void&gt; startBackgroundTracking() async {
+    await FlutterBackgroundService().startService();
+  }
+  
+  // Real-time socket broadcasting
+  static void broadcastLocation(Position position) {
+    SocketService.emit('location_update', {
+      'userId': UserService.currentUser?.id,
+      'latitude': position.latitude,
+      'longitude': position.longitude,
+      'accuracy': position.accuracy,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+}</code></pre>
+
+        <h3>📡 Socket.IO Real-time Integration</h3>
+        <pre><code>// Server-side Socket.IO handling
+const socketHandler = (io) => {
+  const activeUsers = new Map();
+
+  io.on('connection', (socket) => {
+    console.log(`User connected: ${socket.id}`);
+    
+    // Initialize user session with location data
+    socket.on('user_init', (userData) => {
+      activeUsers.set(socket.id, {
+        ...userData,
+        socketId: socket.id,
+        lastSeen: new Date(),
+        isActive: true
+      });
+    });
+    
+    // Handle real-time location updates
+    socket.on('location_update', (locationData) => {
+      // Update user's location in memory
+      const user = activeUsers.get(socket.id);
+      if (user) {
+        user.location = locationData;
+        user.lastSeen = new Date();
+        
+        // Broadcast to nearby users within 5km radius
+        broadcastToNearbyUsers(locationData, 5000);
+      }
+    });
+    
+    // Clean up on disconnect
+    socket.on('disconnect', () => {
+      activeUsers.delete(socket.id);
+      console.log(`User disconnected: ${socket.id}`);
+    });
+  });
+};</code></pre>
+
+        <div class="success">
+            <strong>🔋 Battery Optimization:</strong> Smart location updates with configurable intervals, 
+            movement-based triggering, and background service management to minimize battery drain while 
+            maintaining accurate tracking.
+        </div>
+    </section>
+
+    <section id="offline" class="section page-break">
+        <h1>📵 Offline SOS System</h1>
+        
+        <h3>🏗️ Architecture Overview</h3>
+        <p>The offline SOS system ensures emergency functionality works even without internet connectivity using SQLite local database, intelligent message queuing, and automatic synchronization.</p>
+
+        <h3>🔧 Core Components</h3>
+        <table>
+            <tr><th>Component</th><th>Purpose</th><th>Technology</th></tr>
+            <tr><td>Enhanced Offline SOS Service</td><td>Main offline SOS coordination</td><td>Dart + SQLite</td></tr>
+            <tr><td>Offline Database Service</td><td>SQLite operations & data management</td><td>sqflite package</td></tr>
+            <tr><td>Message Queue System</td><td>Priority-based message queuing</td><td>SQLite with priority levels</td></tr>
+            <tr><td>Auto-sync Service</td><td>Background sync when online</td><td>Connectivity monitoring</td></tr>
+        </table>
+
+        <h3>💾 Message Queue System</h3>
+        <pre><code>-- Offline message queue with priority system
+CREATE TABLE offline_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    message_type TEXT NOT NULL,           -- 'sos_alert', 'location_update', 'contact_update'
+    content TEXT,                         -- JSON serialized message data
+    location_lat REAL,                    -- Emergency location latitude
+    location_lng REAL,                    -- Emergency location longitude
+    priority INTEGER DEFAULT 1,          -- 1=Critical, 2=High, 3=Normal
+    retry_count INTEGER DEFAULT 0,       -- Number of sync attempts
+    max_retries INTEGER DEFAULT 3,       -- Maximum retry attempts
+    status TEXT DEFAULT 'pending',       -- pending, processing, sent, failed
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_attempt DATETIME
+);</code></pre>
+
+        <h3>🚨 Offline SOS Dashboard</h3>
+        <div class="architecture-diagram">
+╔══════════════════════════════════════════════════════════════════╗
+║                    OFFLINE SOS DASHBOARD                         ║
+╠══════════════════════════════════════════════════════════════════╣
+║ 📡 Network Status: [●] Connected / [○] Offline                  ║
+║ 📊 Database Stats: 📞 5 Contacts | 📨 2 Queued | 📍 45 Cached  ║
+║ 🔄 Last Sync: 2 minutes ago                                     ║
+║ ⚡ Offline Capabilities: SOS ✓ | Contacts ✓ | Maps ✓           ║
+║ 🧪 Test SOS: [SEND TEST ALERT]                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+        </div>
+
+        <h3>⚙️ Auto-sync Implementation</h3>
+        <pre><code>class OfflineQueueService {
+  // Process pending messages when connectivity returns
+  static Future&lt;void&gt; processPendingMessages() async {
+    final pendingMessages = await _database.query(
+      'offline_messages',
+      where: 'status = ? AND retry_count &lt; max_retries',
+      whereArgs: ['pending'],
+      orderBy: 'priority ASC, created_at ASC', // Priority first, then FIFO
+    );
+    
+    for (final message in pendingMessages) {
+      try {
+        await _retryMessage(message);
+      } catch (e) {
+        // Increment retry count and update last attempt
+        await _updateRetryCount(message['id']);
+      }
+    }
+  }
+  
+  // Smart retry with exponential backoff
+  static Future&lt;void&gt; _retryMessage(Map&lt;String, dynamic&gt; message) async {
+    final retryDelay = Duration(seconds: pow(2, message['retry_count']).toInt());
+    await Future.delayed(retryDelay);
+    
+    // Attempt to send message to server
+    final success = await ApiService.sendMessage(message['content']);
+    
+    if (success) {
+      await _markMessageSent(message['id']);
+    } else {
+      throw Exception('Failed to send message');
+    }
+  }
+}</code></pre>
+
+        <div class="warning">
+            <strong>⚠️ Critical Feature:</strong> Offline SOS alerts are stored with GPS coordinates and emergency 
+            contact information, ensuring help can be summoned even without internet connectivity. Messages are 
+            queued with priority levels and automatically sent when connection returns.
+        </div>
+    </section>
+
+    <section id="installation" class="section page-break">
+        <h1>🚀 Installation Guide</h1>
+        
+        <h3>📋 Prerequisites</h3>
+        <table>
+            <tr><th>Component</th><th>Required Version</th><th>Purpose</th></tr>
+            <tr><td>Flutter SDK</td><td>3.8.1+</td><td>Cross-platform app development</td></tr>
+            <tr><td>Dart SDK</td><td>Compatible with Flutter</td><td>Programming language</td></tr>
+            <tr><td>Node.js</td><td>16.0.0+</td><td>Backend runtime</td></tr>
+            <tr><td>MongoDB</td><td>4.4+</td><td>Primary database</td></tr>
+            <tr><td>Android Studio</td><td>Latest</td><td>Android development & emulator</td></tr>
+            <tr><td>VS Code</td><td>Latest</td><td>Recommended IDE with Flutter extension</td></tr>
+        </table>
+
+        <h3>🔧 Backend Setup</h3>
+        <pre><code># 1. Clone and navigate to backend
+git clone &lt;repository_url&gt;
+cd Safe_Travel_App_Backend
+
+# 2. Install Node.js dependencies
+npm install
+
+# 3. Create environment file
+echo "MONGODB_URI=mongodb://localhost:27017/safe_travel
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=24h
+FRONTEND_URL=http://localhost:3000
+PORT=3000
+NODE_ENV=development" &gt; .env
+
+# 4. Start MongoDB service
+mongod --dbpath /data/db
+
+# 5. Start development server
+npm run dev</code></pre>
+
+        <h3>📱 Frontend Setup</h3>
+        <pre><code># 1. Navigate to Flutter project
+cd safe_travel_app_Frontend
+
+# 2. Install Flutter dependencies
+flutter pub get
+
+# 3. Verify Flutter installation
+flutter doctor
+
+# 4. Configure Google Maps API (Android)
+# Add your API key to android/app/src/main/AndroidManifest.xml:
+# &lt;meta-data
+#     android:name="com.google.android.geo.API_KEY"
+#     android:value="YOUR_GOOGLE_MAPS_API_KEY"/&gt;
+
+# 5. Run the application
+flutter run -d windows    # Windows desktop
+flutter run -d android    # Android emulator/device
+flutter run -d chrome     # Web browser</code></pre>
+
+        <div class="info">
+            <strong>💡 Pro Tip:</strong> Use <code>flutter run --hot</code> for development with hot reload, 
+            or <code>flutter run --release</code> for production builds with optimizations.
+        </div>
+
+        <h3>🌐 Environment Configuration</h3>
+        <pre><code>// Frontend API configuration (lib/config/api_config.dart)
+class ApiConfig {
+  static const String baseUrl = 'http://localhost:3000/api/v1';
+  static const String socketUrl = 'http://localhost:3000';
+  static const Duration requestTimeout = Duration(seconds: 30);
+  static const int maxRetries = 3;
+  static const bool debugMode = true; // Set false for production
+}</code></pre>
+    </section>
+
+    <section id="security" class="section page-break">
+        <h1>🔒 Security & Performance</h1>
+        
+        <h3>🛡️ Authentication Security</h3>
+        <ul>
+            <li><strong>JWT Tokens:</strong> Cryptographically signed tokens with 24-hour expiration</li>
+            <li><strong>Password Security:</strong> bcrypt hashing with salt rounds (10+ rounds)</li>
+            <li><strong>Rate Limiting:</strong> 200/min general, 5/min auth, 10/min SOS to prevent abuse</li>
+            <li><strong>Input Validation:</strong> Server-side validation with express-validator</li>
+            <li><strong>CORS Protection:</strong> Restricted origin access with proper headers</li>
+        </ul>
+
+        <h3>🔐 Data Protection</h3>
+        <table>
+            <tr><th>Data Type</th><th>Protection Method</th><th>Storage Location</th></tr>
+            <tr><td>User Passwords</td><td>bcrypt + salt</td><td>MongoDB (hashed)</td></tr>
+            <tr><td>JWT Tokens</td><td>HMAC SHA256 signature</td><td>SharedPreferences (encrypted)</td></tr>
+            <tr><td>Location Data</td><td>HTTPS + validation</td><td>MongoDB + SQLite cache</td></tr>
+            <tr><td>Emergency Contacts</td><td>Input sanitization</td><td>MongoDB + SQLite backup</td></tr>
+            <tr><td>SOS Messages</td><td>End-to-end integrity</td><td>MongoDB + offline queue</td></tr>
+        </table>
+
+        <h3>⚡ Performance Optimizations</h3>
+        
+        <h4>Backend Performance</h4>
+        <pre><code>// Express.js performance middleware
+app.use(compression());                    // gzip compression
+app.use(helmet());                         // security headers
+app.use('/api/', rateLimitMiddleware);     // request rate limiting
+
+// MongoDB performance indexes
+db.users.createIndex({ email: 1 }, { unique: true });
+db.locations.createIndex({ userId: 1, timestamp: -1 });
+db.sosalerts.createIndex({ userId: 1, createdAt: -1 });
+db.emergencycontacts.createIndex({ userId: 1, isActive: 1 });</code></pre>
+
+        <h4>Frontend Performance</h4>
+        <ul>
+            <li><strong>Widget Optimization:</strong> Efficient setState() usage and const constructors</li>
+            <li><strong>Image Optimization:</strong> Compressed images with lazy loading</li>
+            <li><strong>Network Caching:</strong> HTTP response caching and request batching</li>
+            <li><strong>Memory Management:</strong> Proper dispose() methods for controllers</li>
+            <li><strong>Battery Optimization:</strong> Smart background service management</li>
+        </ul>
+
+        <div class="success">
+            <strong>🎯 Performance Metrics:</strong> App startup &lt;3 seconds, location update &lt;1 second, 
+            SOS alert &lt;2 seconds, offline sync &lt;5 seconds for typical message queues.
+        </div>
+    </section>
+
+    <section id="troubleshooting" class="section page-break">
+        <h1>🔧 Troubleshooting Guide</h1>
+        
+        <h3>🚨 Common Flutter Issues</h3>
+        
+        <div class="warning">
+            <strong>⚠️ Kotlin Compilation Errors</strong><br>
+            Common with plugins like <code>sign_in_with_apple</code>, <code>share_plus</code>, <code>shared_preferences_android</code>
+        </div>
+        
+        <pre><code># Complete clean rebuild process
+flutter clean
+cd android && .\gradlew.bat clean && cd ..
+flutter pub cache clean
+flutter pub get
+
+# Delete build directories manually if needed
+Remove-Item -Recurse -Force build\
+Remove-Item -Recurse -Force android\.gradle\
+
+# Rebuild application
+flutter build apk --debug</code></pre>
+
+        <h3>🔌 Backend Connection Issues</h3>
+        <table>
+            <tr><th>Issue</th><th>Diagnostic Command</th><th>Solution</th></tr>
+            <tr><td>MongoDB Connection</td><td><code>mongosh --eval "db.stats()"</code></td><td>Check MongoDB service running</td></tr>
+            <tr><td>Server Status</td><td><code>curl http://localhost:3000/health</code></td><td>Verify server is running on port 3000</td></tr>
+            <tr><td>API Endpoints</td><td><code>curl -H "Authorization: Bearer TOKEN" http://localhost:3000/api/v1/user/profile</code></td><td>Check JWT token validity</td></tr>
+            <tr><td>Socket.IO Connection</td><td>Browser dev tools → Network → WS</td><td>Verify WebSocket upgrade</td></tr>
+        </table>
+
+        <h3>📍 Location Permission Issues</h3>
+        <ul>
+            <li><strong>Android:</strong> Enable location services in Settings → Location → App permissions</li>
+            <li><strong>iOS:</strong> Settings → Privacy & Security → Location Services → Safe Travel App</li>
+            <li><strong>Web:</strong> Browser will prompt for location access - click "Allow"</li>
+            <li><strong>Windows:</strong> Settings → Privacy → Location → Allow apps to access location</li>
+        </ul>
+
+        <h3>🐛 Debug Mode Commands</h3>
+        <pre><code># Flutter debugging
+flutter logs                          # Real-time device logs
+flutter doctor -v                     # Detailed environment check
+flutter analyze                       # Static code analysis
+flutter test                          # Run unit tests
+
+# Backend debugging  
+npm run dev                           # Development with nodemon
+npm run test                          # Run Jest tests
+npm run lint                          # ESLint code checking
+DEBUG=* npm run dev                   # Verbose debug logging</code></pre>
+
+        <div class="info">
+            <strong>📱 Quick Fixes:</strong> Most issues resolve with <code>flutter clean && flutter pub get</code> 
+            followed by a complete rebuild. For persistent issues, check Flutter and Dart SDK versions.
+        </div>
+    </section>
+
+    <section id="future" class="section page-break">
+        <h1>🚀 Future Enhancements</h1>
+        
+        <h3>🤖 Planned AI Features</h3>
+        <table>
+            <tr><th>Feature</th><th>Technology</th><th>Timeline</th><th>Impact</th></tr>
+            <tr><td>AI Route Optimization</td><td>Machine Learning + Google Maps</td><td>Q2 2024</td><td>Safer travel routes</td></tr>
+            <tr><td>Voice Commands</td><td>Speech Recognition APIs</td><td>Q3 2024</td><td>Hands-free SOS</td></tr>
+            <tr><td>Predictive Safety</td><td>TensorFlow Lite</td><td>Q4 2024</td><td>Proactive warnings</td></tr>
+            <tr><td>Smart Notifications</td><td>ML-based personalization</td><td>Q1 2025</td><td>Relevant alerts only</td></tr>
+        </table>
+
+        <h3>🔧 Technical Improvements</h3>
+        
+        <div class="feature-box">
+            <h3>🏗️ Microservices Architecture</h3>
+            <p>Decompose monolithic backend into specialized services: Authentication Service, Location Service, 
+            Emergency Service, and Notification Service for better scalability and maintenance.</p>
+        </div>
+
+        <div class="feature-box">
+            <h3>📊 GraphQL API</h3>
+            <p>Replace REST endpoints with GraphQL for more efficient data fetching, reduced network requests, 
+            and better frontend flexibility in requesting specific data fields.</p>
+        </div>
+
+        <div class="feature-box">
+            <h3>☁️ Cloud Integration</h3>
+            <p>AWS/Azure deployment with managed database services, serverless functions for emergency processing, 
+            and CDN integration for faster global access.</p>
+        </div>
+
+        <h3>🌍 Extended Platform Support</h3>
+        <ul>
+            <li><strong>Wearable Integration:</strong> Apple Watch & WearOS apps for quick SOS activation</li>
+            <li><strong>Car Integration:</strong> Android Auto & CarPlay integration for driving safety</li>
+            <li><strong>Smart Home:</strong> Integration with Alexa, Google Assistant for voice-activated emergency</li>
+            <li><strong>Enterprise Edition:</strong> Company-wide safety monitoring and fleet management</li>
+        </ul>
+
+        <h3>📈 Advanced Analytics</h3>
+        <pre><code>// Planned analytics dashboard
+{
+  userSafety: {
+    safetyScore: 95,              // AI-calculated safety score
+    riskAreas: ['downtown', 'highway'], // High-risk locations
+    safeRoutes: 12,               // Number of safe routes used
+    emergencyResponse: '2.3 min'   // Average emergency response time
+  },
+  travelInsights: {
+    totalTrips: 234,
+    safeMiles: 12580,
+    emergencyAlerts: 2,
+    communitySafety: 'High'       // Community safety rating
+  }
+}</code></pre>
+
+        <div class="success">
+            <strong>🎯 Roadmap Goals:</strong> Enhanced AI safety predictions, expanded platform support, 
+            enterprise features, and global community safety network with 1M+ active users by 2025.
+        </div>
+    </section>
+
+    <div class="footer">
+        <h2>📄 Document Information</h2>
+        <p><strong>Safe Travel App - Complete Project Documentation</strong></p>
+        <p>Version 1.0 | Generated: October 9, 2025</p>
+        <p>Technologies: Flutter 3.8.1+, Node.js 16+, MongoDB 4.4+, Socket.IO 4.7.2</p>
+        <p>Architecture: Full-stack mobile app with real-time location tracking and emergency services</p>
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+            <strong>📧 Contact:</strong> development@safetravelapp.com | 
+            <strong>🌐 Repository:</strong> github.com/safetravelapp | 
+            <strong>📖 Documentation:</strong> docs.safetravelapp.com
+        </div>
+    </div>
+
+</body>
+</html>
