@@ -121,7 +121,6 @@ class _MainAppState extends State<MainApp> {
   int _currentScreen =
       0; // 0: signin, 1: signup, 2: home, 3: map, 4: sos, 5: contacts, 6: settings, 7: profile
   User? _user;
-  bool _isLoading = true;
   String _errorMessage = '';
 
   @override
@@ -130,54 +129,54 @@ class _MainAppState extends State<MainApp> {
     _checkAuthenticationStatus();
   }
 
-  /// Check if user is already authenticated on app start
+  /// Quick authentication check - optimized for speed
   Future<void> _checkAuthenticationStatus() async {
+    // Start with signin screen immediately, no loading
+    setState(() {
+      _currentScreen = 0;
+    });
+
+    // Check authentication in background without blocking UI
+    _quickAuthCheck();
+  }
+
+  /// Background authentication check that doesn't block UI
+  Future<void> _quickAuthCheck() async {
     try {
+      // Quick local check first - no network calls
       final isAuthenticated = await AuthService.isAuthenticated();
+      if (!isAuthenticated) return; // Stay on signin
+
+      // Check if token is obviously expired (local check)
       final isTokenExpired = await AuthService.isTokenExpired();
-      
-      if (isAuthenticated && !isTokenExpired) {
-        // User is authenticated with valid token
-        final user = await AuthService.getCurrentUser();
+      if (isTokenExpired) {
+        // Try silent refresh in background
+        AuthService.refreshToken().then((result) {
+          if (result.success) {
+            AuthService.getCurrentUser().then((user) {
+              if (mounted && user != null) {
+                setState(() {
+                  _user = user;
+                  _currentScreen = 2; // Navigate to home
+                });
+              }
+            });
+          }
+        });
+        return;
+      }
+
+      // Get cached user data if available
+      final user = await AuthService.getCurrentUser();
+      if (mounted && user != null) {
         setState(() {
           _user = user;
-          _currentScreen = user != null ? 2 : 0; // home or signin
-          _isLoading = false;
-        });
-      } else if (isAuthenticated && isTokenExpired) {
-        // Try to refresh token
-        final refreshResult = await AuthService.refreshToken();
-        if (refreshResult.success) {
-          final user = await AuthService.getCurrentUser();
-          setState(() {
-            _user = user;
-            _currentScreen = user != null ? 2 : 0;
-            _isLoading = false;
-          });
-        } else {
-          // Refresh failed, show signin
-          setState(() {
-            _user = null;
-            _currentScreen = 0;
-            _isLoading = false;
-          });
-        }
-      } else {
-        // Not authenticated, show signin
-        setState(() {
-          _user = null;
-          _currentScreen = 0;
-          _isLoading = false;
+          _currentScreen = 2; // Navigate to home
         });
       }
     } catch (e) {
-      // Error checking auth, default to signin
-      setState(() {
-        _user = null;
-        _currentScreen = 0;
-        _isLoading = false;
-        _errorMessage = 'Authentication check failed: ${e.toString()}';
-      });
+      // Silently fail - user stays on signin screen
+      print('Background auth check failed: $e');
     }
   }
 
@@ -189,8 +188,8 @@ class _MainAppState extends State<MainApp> {
   }
 
   Future<void> _handleSignin(String email, String password) async {
+    // Clear any previous error immediately
     setState(() {
-      _isLoading = true;
       _errorMessage = '';
     });
 
@@ -198,28 +197,27 @@ class _MainAppState extends State<MainApp> {
       final result = await AuthService.signin(email, password);
       
       if (result.success && result.user != null) {
+        // Immediate navigation on success
         setState(() {
           _user = result.user;
           _currentScreen = 2; // go to home
-          _isLoading = false;
         });
       } else {
+        // Show error without loading state
         setState(() {
-          _isLoading = false;
           _errorMessage = result.message;
         });
       }
     } catch (e) {
       setState(() {
-        _isLoading = false;
         _errorMessage = 'Sign in failed: ${e.toString()}';
       });
     }
   }
 
   Future<void> _handleSignup(String name, String email, String phone, String password) async {
+    // Clear any previous error immediately  
     setState(() {
-      _isLoading = true;
       _errorMessage = '';
     });
 
@@ -227,118 +225,74 @@ class _MainAppState extends State<MainApp> {
       final result = await AuthService.signup(name, email, phone, password);
       
       if (result.success && result.user != null) {
+        // Immediate navigation on success
         setState(() {
           _user = result.user;
           _currentScreen = 2; // go to home
-          _isLoading = false;
         });
       } else {
+        // Show error without loading state
         setState(() {
-          _isLoading = false;
           _errorMessage = result.message;
         });
       }
     } catch (e) {
       setState(() {
-        _isLoading = false;
         _errorMessage = 'Sign up failed: ${e.toString()}';
       });
     }
   }
 
   Future<void> _handleSignout() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       await AuthService.signout();
       setState(() {
         _user = null;
         _currentScreen = 0; // back to signin
-        _isLoading = false;
         _errorMessage = '';
       });
     } catch (e) {
       setState(() {
-        _isLoading = false;
         _errorMessage = 'Sign out failed: ${e.toString()}';
       });
     }
   }
 
   Future<void> _updateUser(User user) async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       final result = await AuthService.updateUserProfile(user);
       
       if (result.success && result.user != null) {
         setState(() {
           _user = result.user;
-          _isLoading = false;
         });
       } else {
         setState(() {
-          _isLoading = false;
           _errorMessage = result.message;
         });
       }
     } catch (e) {
       setState(() {
-        _isLoading = false;
         _errorMessage = 'Profile update failed: ${e.toString()}';
       });
     }
   }
 
   Widget _buildCurrentScreen() {
-    // Show loading screen during initial authentication check
-    if (_isLoading && _user == null && _currentScreen == 0) {
-      return Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
-            ),
-          ),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: Colors.white),
-                SizedBox(height: 16),
-                Text(
-                  'Loading...',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-  switch (_currentScreen) {
+    // No loading screen - show requested screen immediately
+    switch (_currentScreen) {
     case 0:
       return SigninScreen(
         onSignin: _handleSignin,
         onNavigateToSignup: () => _navigateToScreen(1),
-        isLoading: _isLoading,
+        isLoading: false, // No more loading states
         errorMessage: _errorMessage,
       );
     case 1:
       return SignUpScreen(
         onSignup: _handleSignup,
         onNavigateToSignin: () => _navigateToScreen(0),
-        isLoading: _isLoading,
+        isLoading: false, // No more loading states
         errorMessage: _errorMessage,
       );
     case 2:
@@ -375,7 +329,7 @@ class _MainAppState extends State<MainApp> {
       return SigninScreen(
         onSignin: _handleSignin,
         onNavigateToSignup: () => _navigateToScreen(1),
-        isLoading: _isLoading,
+        isLoading: false, // No more loading states
         errorMessage: _errorMessage,
       );
   }

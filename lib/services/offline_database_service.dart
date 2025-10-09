@@ -238,6 +238,21 @@ class OfflineDatabaseService {
       rethrow;
     }
   }
+  
+  /// Get unsent SOS alerts for syncing when online
+  Future<List<Map<String, dynamic>>> getUnsentSOSAlerts() async {
+    try {
+      final db = await database;
+      return await db.query(
+        tableSOSAlerts,
+        where: 'is_synced = 0',
+        orderBy: 'timestamp ASC',
+      );
+    } catch (e) {
+      print('❌ Error getting unsent SOS alerts: $e');
+      return [];
+    }
+  }
 
   /// Store location data for tracking
   Future<int> storeLocationData(Position position) async {
@@ -712,4 +727,6 @@ class OfflineDatabaseService {
     close();
     _instance = null;
   }
+
+  Future<void> init() async {}
 }

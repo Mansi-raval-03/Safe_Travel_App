@@ -7,6 +7,8 @@ import '../services/socket_service.dart';
 import '../services/sos_emergency_service.dart';
 import '../services/emergency_contact_service.dart';
 import '../services/enhanced_sos_service.dart';
+import '../services/emergency_location_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../screens/sos_settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
@@ -55,6 +57,9 @@ class _MapScreenState extends State<MapScreen> {
   // SOS emergency state
   bool _isSOSActive = false;
   int _emergencyContactsCount = 0;
+  
+  // Emergency services state
+  List<Map<String, dynamic>> _nearbyServices = [];
 
   @override
   void initState() {
@@ -69,6 +74,30 @@ class _MapScreenState extends State<MapScreen> {
     await _debugEmergencyContactsAPI(); // Debug API first
     await _initSOSEmergencyService();
     await _testSOSSystem(); // Test complete SOS system
+    await _loadNearbyServices(); // Load emergency services
+  }
+  
+  /// Load nearby emergency services based on user location
+  Future<void> _loadNearbyServices() async {
+    try {
+      if (_currentPosition != null) {
+        final services = EmergencyLocationService.getNearbyServices(
+          userLatitude: _currentPosition!.latitude,
+          userLongitude: _currentPosition!.longitude,
+          maxResults: 6,
+        );
+        
+        setState(() {
+          _nearbyServices = services;
+        });
+        
+        print('🏥 Loaded ${services.length} nearby emergency services');
+      } else {
+        print('⚠️ Cannot load services - no user location available');
+      }
+    } catch (e) {
+      print('❌ Error loading nearby services: $e');
+    }
   }
 
   /// Initialize enhanced SOS service
@@ -256,6 +285,9 @@ This is an automated emergency message from Safe Travel App. Please respond imme
             
             // Update camera position
             _moveCamera(LatLng(position.latitude, position.longitude));
+            
+            // Reload nearby emergency services when location changes significantly
+            _loadNearbyServices();
           },
           onError: (error) {
             print('❌ Location stream error: $error');
@@ -783,44 +815,43 @@ This is an automated emergency message from Safe Travel App. Please respond imme
   }
 
 
-  final List<Map<String, dynamic>> nearbyServices = [
-    {
-      'id': 'hospital',
-      'name': 'City General Hospital',
-      'type': 'Hospital',
-      'icon': Icons.local_hospital,
-      'distance': '2.1 km',
-      'time': '8 min',
-      'address': '456 Medical Center Blvd',
-      'phone': '+1-555-0123',
-      'status': 'Open 24/7',
-      'color': Colors.red,
-    },
-    {
-      'id': 'police',
-      'name': 'Central Police Station',
-      'type': 'Police',
-      'icon': Icons.shield,
-      'distance': '1.5 km',
-      'time': '6 min',
-      'address': '789 Justice Ave',
-      'phone': '+1-555-0911',
-      'status': 'Open 24/7',
-      'color': Colors.blue,
-    },
-    {
-      'id': 'fuel',
-      'name': 'QuickFill Gas Station',
-      'type': 'Fuel',
-      'icon': Icons.local_gas_station,
-      'distance': '0.8 km',
-      'time': '3 min',
-      'address': '321 Highway 101',
-      'phone': '+1-555-0456',
-      'status': 'Open until 11 PM',
-      'color': Colors.green,
-    },
-  ];
+  /// Handle call button press for emergency service
+  Future<void> _handleCallService(String phoneNumber, String serviceName) async {
+    try {
+      await EmergencyLocationService.makeCall(phoneNumber);
+      print('📞 Calling $serviceName at $phoneNumber');
+    } catch (e) {
+      print('❌ Error calling service: $e');
+      // Show error message to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not make call to $serviceName'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Handle go button press for emergency service
+  Future<void> _handleGoToService(double latitude, double longitude, String serviceName) async {
+    try {
+      await EmergencyLocationService.navigateToLocation(
+        latitude: latitude,
+        longitude: longitude,
+        locationName: serviceName,
+      );
+      print('🗺️ Opening navigation to $serviceName');
+    } catch (e) {
+      print('❌ Error opening navigation: $e');
+      // Show error message to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open navigation to $serviceName'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -1355,7 +1386,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                             ),
                             SizedBox(height: 12),
                             Column(
-                              children: nearbyServices.map((service) {
+                              children: _nearbyServices.map((service) {
                                 return Container(
                                   margin: EdgeInsets.only(bottom: 12),
                                   padding: EdgeInsets.all(12),
@@ -1398,39 +1429,77 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                                 color: Colors.grey.shade600,
                                               ),
                                             ),
+                                            Text(
+                                              service['address'] as String,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey.shade500,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ],
                                         ),
                                       ),
                                       Row(
                                         children: [
                                           OutlinedButton(
-                                            onPressed: () {},
+                                            onPressed: () => _handleCallService(
+                                              service['phone'] as String,
+                                              service['name'] as String,
+                                            ),
                                             style: OutlinedButton.styleFrom(
                                               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                               side: BorderSide(color: Colors.grey.shade300),
                                             ),
-                                            child: Text(
-                                              'Call',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade700,
-                                              ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.phone,
+                                                  size: 14,
+                                                  color: Colors.grey.shade700,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Call',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey.shade700,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                           SizedBox(width: 8),
                                           ElevatedButton(
-                                            onPressed: () {},
+                                            onPressed: () => _handleGoToService(
+                                              service['latitude'] as double,
+                                              service['longitude'] as double,
+                                              service['name'] as String,
+                                            ),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: Color(0xFF3B82F6),
                                               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                             ),
-                                            child: Text(
-                                              'Go',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w600,
-                                              ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.navigation,
+                                                  size: 14,
+                                                  color: Colors.white,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Go',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ],
@@ -1838,7 +1907,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: BottomNavigation(
-        currentIndex: 1,
+        currentIndex: 3, // Screen index 3 (Map)
         onNavigate: widget.onNavigate,
       ),
     );

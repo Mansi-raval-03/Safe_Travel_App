@@ -6,7 +6,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'emergency_contact_service.dart';
+import 'offline_database_service.dart';
 
 class EnhancedSOSService {
   static const String baseUrl = 'http://192.168.1.4:3000/api/v1';
@@ -19,6 +21,18 @@ class EnhancedSOSService {
   Function(int)? _onTimerTick;
   Function()? _onTimerComplete;
   Function()? _onTimerCancelled;
+  
+  // Emergency numbers (can be customized by location/country)
+  static const Map<String, String> emergencyNumbers = {
+    'police': '911',
+    'medical': '911',
+    'fire': '911',
+    'general': '911',
+  };
+  
+  // Connectivity monitoring
+  final Connectivity _connectivity = Connectivity();
+  bool _isOnline = true;
 
   static EnhancedSOSService get instance {
     _instance ??= EnhancedSOSService._();
@@ -30,9 +44,106 @@ class EnhancedSOSService {
   // Initialize and load settings
   Future<void> initialize() async {
     await _loadSettings();
+    await _initConnectivityMonitoring();
     print('🚨 Enhanced SOS Service initialized');
     print('⏱️ Timer duration: $_sosTimerDuration seconds');
     print('🔄 Auto-send enabled: $_autoSendEnabled');
+    print('🌐 Network monitoring: $_isOnline');
+  }
+
+  // Emergency numbers for direct calling (offline mode)
+  final Map<String, String> _emergencyNumbers = {
+    'medical': '911',     // Emergency Medical Services
+    'police': '911',      // Police
+    'fire': '911',        // Fire Department
+    'general': '911',     // General Emergency
+  };
+
+  /// Make emergency call when offline
+  Future<bool> _makeEmergencyCall(String emergencyType) async {
+    try {
+      String emergencyNumber = _emergencyNumbers[emergencyType] ?? '911';
+      String telUrl = 'tel:$emergencyNumber';
+      
+      print('📞 Making emergency call to $emergencyNumber for $emergencyType');
+      
+      if (await canLaunchUrl(Uri.parse(telUrl))) {
+        await launchUrl(
+          Uri.parse(telUrl),
+          mode: LaunchMode.externalApplication,
+        );
+        print('✅ Emergency call initiated successfully');
+        return true;
+      } else {
+        print('❌ Cannot make phone calls on this device');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Error making emergency call: $e');
+      return false;
+    }
+  }
+  
+  /// Initialize connectivity monitoring
+  Future<void> _initConnectivityMonitoring() async {
+    try {
+      // Check initial connectivity
+      final connectivityResults = await _connectivity.checkConnectivity();
+      _isOnline = !connectivityResults.contains(ConnectivityResult.none);
+      
+      // Listen to connectivity changes
+      _connectivity.onConnectivityChanged.listen((List<ConnectivityResult> results) {
+        bool wasOnline = _isOnline;
+        _isOnline = !results.contains(ConnectivityResult.none);
+        
+        if (wasOnline != _isOnline) {
+          print('🌐 Connectivity changed: ${_isOnline ? 'Online' : 'Offline'}');
+          if (_isOnline) {
+            _syncOfflineSOSAlerts();
+          }
+        }
+      });
+    } catch (e) {
+      print('❌ Error initializing connectivity monitoring: $e');
+      _isOnline = true; // Assume online if can't determine
+    }
+  }
+  
+  /// Sync offline SOS alerts when connectivity returns
+  Future<void> _syncOfflineSOSAlerts() async {
+    try {
+      final dbService = OfflineDatabaseService.instance;
+      final offlineAlerts = await dbService.getUnsentSOSAlerts();
+      
+      print('🔄 Syncing ${offlineAlerts.length} offline SOS alerts...');
+      
+      for (final alert in offlineAlerts) {
+        // Attempt to send each offline alert
+        final success = await _createSOSAlert(
+          emergencyType: alert['emergency_type'],
+          message: alert['message'] ?? 'Emergency alert sent offline',
+          position: Position(
+            latitude: alert['latitude'],
+            longitude: alert['longitude'],
+            timestamp: DateTime.fromMillisecondsSinceEpoch(alert['timestamp']),
+            accuracy: alert['accuracy'] ?? 10.0,
+            altitude: 0.0,
+            altitudeAccuracy: 0.0,
+            heading: 0.0,
+            headingAccuracy: 0.0,
+            speed: 0.0,
+            speedAccuracy: 0.0,
+          ),
+        );
+        
+        if (success) {
+          await dbService.markSOSAlertAsSynced(alert['id']);
+          print('✅ Synced offline SOS alert: ${alert['id']}');
+        }
+      }
+    } catch (e) {
+      print('❌ Error syncing offline SOS alerts: $e');
+    }
   }
 
   // Load settings from SharedPreferences
@@ -110,7 +221,7 @@ class EnhancedSOSService {
     }
   }
 
-  // Send comprehensive SOS alert
+  // Send comprehensive SOS alert with offline support
   Future<bool> sendComprehensiveSOSAlert({
     required String emergencyType,
     required String message,
@@ -119,15 +230,45 @@ class EnhancedSOSService {
   }) async {
     try {
       print('🚨 Sending comprehensive SOS alert...');
+      print('🌐 Network status: ${_isOnline ? 'Online' : 'Offline'}');
 
-      // 1. Create SOS alert in backend
+      // 1. Store SOS alert locally first (works offline)
+      final dbService = OfflineDatabaseService.instance;
+      await dbService.storeSOSAlert(
+        emergencyType: emergencyType,
+        message: message,
+        position: currentPosition,
+      );
+      print('💾 SOS Alert stored locally');
+
+      // 2. If offline, use emergency dialing and local messaging only
+      if (!_isOnline) {
+        print('📵 Device offline - using emergency protocols');
+        
+        // Call emergency services directly if critical
+        bool emergencyCallSuccess = await _makeEmergencyCall(emergencyType);
+        
+        // Send to local contacts via device-based SMS
+        bool smsSuccess = await _sendSOSviaSMS(
+          emergencyType: emergencyType,
+          message: message,
+          position: currentPosition,
+          contacts: emergencyContacts,
+        );
+        
+        print('🆘 Offline SOS: Emergency call: $emergencyCallSuccess, SMS: $smsSuccess');
+        return emergencyCallSuccess || smsSuccess;
+      }
+
+      // 3. Online mode - full functionality
+      // Create SOS alert in backend
       bool backendSuccess = await _createSOSAlert(
         emergencyType: emergencyType,
         message: message,
         position: currentPosition,
       );
 
-      // 2. Send via multiple channels
+      // Send via multiple channels
       bool smsSuccess = await _sendSOSviaSMS(
         emergencyType: emergencyType,
         message: message,
@@ -142,7 +283,7 @@ class EnhancedSOSService {
         contacts: emergencyContacts,
       );
 
-      // 3. Fallback to general sharing if specific channels fail
+      // Fallback to general sharing if specific channels fail
       if (!smsSuccess && !whatsappSuccess) {
         await _sendSOSviaGeneralShare(
           emergencyType: emergencyType,
@@ -495,7 +636,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                     backgroundColor: Colors.grey,
                   ),
                   child: Text('Cancel'),
-                ),
+                ), 
                 ElevatedButton(
                   onPressed: () async {
                     isCancelled = true;

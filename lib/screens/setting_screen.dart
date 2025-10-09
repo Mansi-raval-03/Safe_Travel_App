@@ -289,7 +289,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
       bottomNavigationBar: BottomNavigation(
-        currentIndex: 4, // Assuming settings is at index 4 in bottom nav
+        currentIndex: 6, // Settings screen - no corresponding bottom nav item
         onNavigate: widget.onNavigate,
       ),
     );

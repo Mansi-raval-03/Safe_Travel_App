@@ -12,6 +12,19 @@ class BottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Map screen indices to bottom navigation indices
+    int getBottomNavIndex() {
+      switch (currentIndex) {
+        case 2: return 0; // Home screen
+        case 3: return 1; // Map screen  
+        case 4: return 2; // SOS screen
+        case 5: return 3; // Contacts screen
+        case 7: return 4; // Profile screen
+        case 6: return 0; // Settings screen - default to Home
+        default: return 0; // Default to Home
+      }
+    }
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -30,7 +43,7 @@ class BottomNavigation extends StatelessWidget {
         ),
       ),
       child: BottomNavigationBar(
-        currentIndex: currentIndex,
+        currentIndex: getBottomNavIndex(),
         onTap: (index) {
           // Map bottom nav indices to screen indices
           final screenMap = {

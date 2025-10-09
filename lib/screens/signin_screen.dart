@@ -25,9 +25,8 @@ class _SigninScreenState extends State<SigninScreen> {
   bool _rememberMe = false;
 
   void _handleSubmit() {
-    if (!widget.isLoading) {
-      widget.onSignin(_emailController.text, _passwordController.text);
-    }
+    // Provide instant feedback and call signin immediately
+    widget.onSignin(_emailController.text, _passwordController.text);
   }
 
   @override
@@ -270,7 +269,7 @@ class _SigninScreenState extends State<SigninScreen> {
         ],
       ),
       child: ElevatedButton(
-        onPressed: widget.isLoading ? null : _handleSubmit,
+        onPressed: _handleSubmit,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF2563EB),
           foregroundColor: Colors.white,
@@ -280,22 +279,13 @@ class _SigninScreenState extends State<SigninScreen> {
           ),
           elevation: 0,
         ),
-        child: widget.isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  strokeWidth: 2,
-                ),
-              )
-            : const Text(
-                'Sign In',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+        child: const Text(
+          'Sign In',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

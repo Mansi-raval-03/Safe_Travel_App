@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/emergency_contact_service.dart';
+import '../services/enhanced_sos_service.dart';
 import 'dart:async';
 import '../models/user.dart';
 import '../widgets/bottom_navigation.dart';
+import 'package:geolocator/geolocator.dart';
 
 class SOSConfirmationScreen extends StatefulWidget {
   final User? user;
@@ -84,27 +86,94 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
     });
   }
 
-  void _sendAlert() {
+  Future<void> _sendAlert() async {
     setState(() {
       _alertSent = true;
     });
 
-    // Simulate notifying contacts one by one
-    for (int i = 0; i < _emergencyContacts.length; i++) {
-      Timer(Duration(seconds: i + 1), () {
+    try {
+      // Get current location
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        );
+      } catch (e) {
+        print('⚠️  Could not get location: $e');
+        // Use a default location or last known location
+        position = Position(
+          latitude: 0.0,
+          longitude: 0.0,
+          timestamp: DateTime.now(),
+          accuracy: 0.0,
+          altitude: 0.0,
+          altitudeAccuracy: 0.0,
+          heading: 0.0,
+          headingAccuracy: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+        );
+      }
+
+      // Send comprehensive SOS alert
+      final sosService = EnhancedSOSService.instance;
+      bool success = await sosService.sendComprehensiveSOSAlert(
+        emergencyType: 'general',
+        message: 'Emergency SOS Alert! I need immediate assistance.',
+        currentPosition: position,
+        emergencyContacts: _emergencyContacts,
+      );
+
+      if (success) {
+        print('✅ SOS Alert sent successfully');
+        // Simulate notifying contacts one by one for UI feedback
+        for (int i = 0; i < _emergencyContacts.length; i++) {
+          Timer(Duration(milliseconds: 500 * (i + 1)), () {
+            if (mounted) {
+              setState(() {
+                _contactsNotified.add(_emergencyContacts[i].id);
+              });
+            }
+          });
+        }
+        
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Emergency alert sent successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw Exception('Failed to send SOS alert');
+      }
+    } catch (e) {
+      print('❌ Error sending SOS alert: $e');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send emergency alert: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        
+        // Reset alert state on failure
         setState(() {
-          _contactsNotified.add(_emergencyContacts[i].id);
+          _alertSent = false;
         });
-      });
+      }
     }
   }
 
-  void _immediateSOS() {
+  Future<void> _immediateSOS() async {
     setState(() {
       _countdown = 0;
       _isActive = true;
     });
-    _sendAlert();
+    await _sendAlert();
   }
 
    @override
@@ -852,7 +921,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
         ],
       ),
       bottomNavigationBar: BottomNavigation(
-        currentIndex: 2,
+        currentIndex: 4, // Screen index 4 (SOS)
         onNavigate: widget.onNavigate,
       ),
     );

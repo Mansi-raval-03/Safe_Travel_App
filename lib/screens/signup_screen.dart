@@ -284,31 +284,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               width: double.infinity,
                               height: 48,
                               child: ElevatedButton(
-                                onPressed: widget.isLoading ? null : _handleSubmit,
+                                onPressed: _handleSubmit,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF3B82F6),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  disabledBackgroundColor: Colors.grey.shade400,
                                 ),
-                                child: widget.isLoading
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Text(
-                                        'Sign Up',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                        ),
-                                      ),
+                                child: const Text(
+                                  'Sign Up',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 16),

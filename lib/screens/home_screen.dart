@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../widgets/bottom_navigation.dart';
+import '../services/offline_database_service.dart';
+import '../services/emergency_contact_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final User? user;
@@ -23,6 +25,10 @@ class _HomeScreenState extends State<HomeScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
   late Animation<double> _pulseAnimation;
+  
+  // Emergency contacts data
+  int _emergencyContactsCount = 0;
+  bool _isLoadingContacts = true;
 
   @override
   void initState() {
@@ -64,6 +70,41 @@ class _HomeScreenState extends State<HomeScreen>
 
     _animationController.forward();
     _pulseController.repeat(reverse: true);
+    
+    // Load emergency contacts data
+    _loadEmergencyContacts();
+  }
+  
+  /// Load emergency contacts from local SQLite database
+  Future<void> _loadEmergencyContacts() async {
+    try {
+      setState(() {
+        _isLoadingContacts = true;
+      });
+
+      // Try to get contacts from API first, then fallback to local database
+      try {
+        final apiContacts = await EmergencyContactService.getAllContacts();
+        setState(() {
+          _emergencyContactsCount = apiContacts.length;
+          _isLoadingContacts = false;
+        });
+      } catch (apiError) {
+        // Fallback to local database
+        final dbService = OfflineDatabaseService.instance;
+        final localContacts = await dbService.getCachedEmergencyContacts();
+        setState(() {
+          _emergencyContactsCount = localContacts.length;
+          _isLoadingContacts = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading emergency contacts: $e');
+      setState(() {
+        _emergencyContactsCount = 0;
+        _isLoadingContacts = false;
+      });
+    }
   }
 
   @override
@@ -249,12 +290,14 @@ class _HomeScreenState extends State<HomeScreen>
                                         icon: Icons.wifi_rounded,
                                         text: 'Online',
                                         color: const Color(0xFF10B981),
+                                        onTap: null,
                                       ),
                                       const SizedBox(width: 12),
                                       _buildStatusChip(
                                         icon: Icons.location_on_rounded,
                                         text: 'GPS Active',
                                         color: const Color(0xFF06B6D4),
+                                        onTap: () => widget.onNavigate(3), // Navigate to map screen
                                       ),
                                     ],
                                   ),
@@ -270,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen>
 
                 // Quick Actions Grid
                 SliverPadding(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
                   sliver: SliverGrid(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
@@ -284,9 +327,9 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 1.15,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.0,
                     ),
                   ),
                 ),
@@ -317,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen>
         },
       ),
       bottomNavigationBar: BottomNavigation(
-        currentIndex: 0,
+        currentIndex: 2, // Screen index 2 (Home)
         onNavigate: widget.onNavigate,
       ),
     );
@@ -327,30 +370,34 @@ class _HomeScreenState extends State<HomeScreen>
     required IconData icon,
     required String text,
     required Color color,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: Colors.white),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
           ),
-        ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: Colors.white),
+            const SizedBox(width: 6),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -363,78 +410,91 @@ class _HomeScreenState extends State<HomeScreen>
         return Transform.scale(
           scale: value,
           child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(
+              minHeight: 160,
+              maxHeight: 180,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: (action['color'] as Color).withOpacity(0.1),
+                  color: Colors.black.withOpacity(0.08),
                   blurRadius: 15,
                   offset: const Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: (action['color'] as Color).withOpacity(0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: Material(
               color: Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
               child: InkWell(
                 onTap: action['action'] as VoidCallback,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 64,
-                        height: 64,
+                        width: 56,
+                        height: 56,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              (action['color'] as Color).withOpacity(0.1),
-                              (action['color'] as Color).withOpacity(0.05),
+                              (action['color'] as Color).withOpacity(0.15),
+                              (action['color'] as Color).withOpacity(0.08),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: (action['color'] as Color).withOpacity(0.2),
+                            color: (action['color'] as Color).withOpacity(0.25),
                             width: 1.5,
                           ),
                         ),
                         child: Icon(
                           action['icon'] as IconData,
                           color: action['color'] as Color,
-                          size: 32,
+                          size: 28,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        action['title'] as String,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1F2937),
+                      const SizedBox(height: 12),
+                      Flexible(
+                        child: Text(
+                          action['title'] as String,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1F2937),
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        action['description'] as String,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.grey[600],
-                          height: 1.3,
+                      const SizedBox(height: 4),
+                      Flexible(
+                        child: Text(
+                          action['description'] as String,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.grey[600],
+                            height: 1.2,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -461,79 +521,87 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFF06B6D4).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.location_on_rounded,
-                color: Color(0xFF06B6D4),
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Current Location',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1F2937),
-                    ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: () => widget.onNavigate(3), // Navigate to map screen
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF06B6D4).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '123 Main Street, Downtown',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                  child: const Icon(
+                    Icons.location_on_rounded,
+                    color: Color(0xFF06B6D4),
+                    size: 24,
                   ),
-                  const SizedBox(height: 2),
-                  Row(
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.access_time_rounded,
-                        size: 12,
-                        color: Colors.grey[500],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Updated just now',
+                      const Text(
+                        'Current Location',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937),
                         ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '123 Main Street, Downtown',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 12,
+                            color: Colors.grey[500],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Updated just now',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF06B6D4).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF06B6D4),
+                    size: 20,
+                  ),
+                ),
+              ],
             ),
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFF06B6D4).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFF06B6D4),
-                size: 20,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -599,7 +667,13 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
             const SizedBox(height: 20),
-            _buildStatusRow('Emergency Contacts', '3 contacts', const Color(0xFF10B981)),
+            _buildStatusRow(
+              'Emergency Contacts', 
+              _isLoadingContacts 
+                ? 'Loading...' 
+                : '$_emergencyContactsCount contact${_emergencyContactsCount == 1 ? '' : 's'}', 
+              const Color(0xFF10B981)
+            ),
             _buildStatusRow('Location Sharing', 'Active', const Color(0xFF06B6D4)),
             _buildStatusRow('Offline Mode', 'Ready', const Color(0xFF8B5CF6)),
           ],
