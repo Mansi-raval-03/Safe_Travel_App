@@ -27,7 +27,6 @@ class RealTimeLocationService {
   // Location tracking
   StreamSubscription<Position>? _locationSubscription;
   Position? _lastKnownPosition;
-  DateTime? _lastLocationUpdate;
 
   // Network monitoring
   bool _isOnline = true;
@@ -237,7 +236,6 @@ class RealTimeLocationService {
   Future<void> _handleLocationUpdate(Position position) async {
     try {
       _lastKnownPosition = position;
-      _lastLocationUpdate = DateTime.now();
 
       print('📍 Location update: ${position.latitude}, ${position.longitude}');
 

@@ -8,7 +8,6 @@ import '../services/sos_emergency_service.dart';
 import '../services/emergency_contact_service.dart';
 import '../services/enhanced_sos_service.dart';
 import '../services/emergency_location_service.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../screens/sos_settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:geolocator/geolocator.dart';
 import '../services/emergency_contact_service.dart';
 import '../services/direct_sos_service.dart';
 import '../screens/add_edit_contact_screen.dart';

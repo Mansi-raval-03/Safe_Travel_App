@@ -4,12 +4,18 @@ import 'package:safe_travel_app/models/emergency_screen.dart';
 import 'package:safe_travel_app/screens/setting_screen.dart';
 import 'screens/signin_screen.dart';
 import 'screens/signup_screen.dart';
+
 import 'screens/home_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/sos_confirmation_screen.dart';
+import 'screens/offline_sos_screen.dart';
+import 'screens/offline_emergency_contacts_screen.dart';
+import 'screens/enhanced_offline_sos_screen.dart';
 import 'screens/profile_screen.dart';
 import 'models/user.dart';
 import 'services/auth_service.dart';
+
+import 'services/integrated_offline_emergency_service.dart';
 
 void main() {
   runApp(SafeTravelApp());
@@ -119,15 +125,33 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   int _currentScreen =
-      0; // 0: signin, 1: signup, 2: home, 3: map, 4: sos, 5: contacts, 6: settings, 7: profile
+      0; // 0: signin, 1: signup, 2: email_verification, 3: home, 4: map, 5: sos, 6: contacts, 7: settings, 8: profile, 9: offline_sos, 10: emergency_contacts, 11: enhanced_sos
   User? _user;
   String _errorMessage = '';
+  
+  // Loading states
+  bool _isLoading = false;
+  bool _isRegistering = false;
 
   @override
   void initState() {
     super.initState();
     _checkAuthenticationStatus();
+    _initializeEmergencyService();
+
   }
+
+  /// Initialize the offline emergency service
+  Future<void> _initializeEmergencyService() async {
+    try {
+      await IntegratedOfflineEmergencyService.instance.initialize();
+      print('Offline emergency service initialized successfully');
+    } catch (e) {
+      print('Failed to initialize offline emergency service: $e');
+    }
+  }
+
+
 
   /// Quick authentication check - optimized for speed
   Future<void> _checkAuthenticationStatus() async {
@@ -188,29 +212,33 @@ class _MainAppState extends State<MainApp> {
   }
 
   Future<void> _handleSignin(String email, String password) async {
-    // Clear any previous error immediately
+    // Clear any previous error and set loading state
     setState(() {
       _errorMessage = '';
+      _isLoading = true;
     });
 
     try {
       final result = await AuthService.signin(email, password);
       
       if (result.success && result.user != null) {
-        // Immediate navigation on success
+        // Navigation on success with loading cleared
         setState(() {
           _user = result.user;
-          _currentScreen = 2; // go to home
+          _currentScreen = 2; // go to home (screen 2)
+          _isLoading = false;
         });
       } else {
-        // Show error without loading state
+        // Show error and clear loading
         setState(() {
           _errorMessage = result.message;
+          _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
         _errorMessage = 'Sign in failed: ${e.toString()}';
+        _isLoading = false;
       });
     }
   }
@@ -219,29 +247,37 @@ class _MainAppState extends State<MainApp> {
     // Clear any previous error immediately  
     setState(() {
       _errorMessage = '';
+      _isRegistering = true;
     });
 
     try {
+      // Directly create account without email verification
       final result = await AuthService.signup(name, email, phone, password);
       
       if (result.success && result.user != null) {
-        // Immediate navigation on success
+        // Navigate directly to home screen
         setState(() {
           _user = result.user;
-          _currentScreen = 2; // go to home
+          _isRegistering = false;
+          _currentScreen = 2; // home screen
         });
       } else {
-        // Show error without loading state
         setState(() {
+          _isRegistering = false;
           _errorMessage = result.message;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Sign up failed: ${e.toString()}';
+        _isRegistering = false;
+        _errorMessage = 'Registration failed: ${e.toString()}';
       });
     }
   }
+
+
+
+
 
   Future<void> _handleSignout() async {
     try {
@@ -285,16 +321,17 @@ class _MainAppState extends State<MainApp> {
       return SigninScreen(
         onSignin: _handleSignin,
         onNavigateToSignup: () => _navigateToScreen(1),
-        isLoading: false, // No more loading states
+        isLoading: _isLoading,
         errorMessage: _errorMessage,
       );
     case 1:
       return SignUpScreen(
         onSignup: _handleSignup,
         onNavigateToSignin: () => _navigateToScreen(0),
-        isLoading: false, // No more loading states
+        isLoading: _isRegistering,
         errorMessage: _errorMessage,
       );
+
     case 2:
       return HomeScreen(
         user: _user,
@@ -323,6 +360,16 @@ class _MainAppState extends State<MainApp> {
       return ProfileScreen(
         user: _user,
         onUpdateUser: _updateUser,
+        onNavigate: _navigateToScreen,
+      );
+    case 9:
+      return const OfflineSOSScreen();
+    case 10:
+      return OfflineEmergencyContactsScreen(
+        onNavigate: _navigateToScreen,
+      );
+    case 11:
+      return EnhancedOfflineSOSScreen(
         onNavigate: _navigateToScreen,
       );
     default:
