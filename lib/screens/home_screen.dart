@@ -6,7 +6,8 @@ import '../services/emergency_contact_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final User? user;
-  final Function(int) onNavigate;
+  final Function(int) 
+  onNavigate;
 
   const HomeScreen({
     Key? key,
@@ -144,6 +145,13 @@ class _HomeScreenState extends State<HomeScreen>
         'icon': Icons.person_rounded,
         'color': const Color(0xFF8B5CF6),
         'action': () => widget.onNavigate(7),
+      },
+      {
+        'title': 'Location Storage Demo',
+        'description': 'Test periodic location storage (every 5 min)',
+        'icon': Icons.storage_rounded,
+        'color': const Color(0xFFF59E0B),
+        'action': () => widget.onNavigate(8),
       },
     ];
 

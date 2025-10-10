@@ -670,6 +670,24 @@ class OfflineDatabaseService {
     }
   }
 
+  /// Get recent stored locations for monitoring/debugging (last N locations)
+  Future<List<Map<String, dynamic>>> getRecentStoredLocations({int limit = 10}) async {
+    try {
+      final db = await database;
+      final locations = await db.query(
+        tableLocations,
+        orderBy: 'timestamp DESC',
+        limit: limit,
+      );
+      
+      print('📍 Retrieved ${locations.length} recent stored locations');
+      return locations;
+    } catch (e) {
+      print('❌ Error getting recent stored locations: $e');
+      return [];
+    }
+  }
+
   /// Get service statistics for monitoring
   Future<Map<String, dynamic>> getServiceStats() async {
     try {

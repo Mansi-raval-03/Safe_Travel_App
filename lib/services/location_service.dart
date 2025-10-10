@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
+import 'offline_database_service.dart';
+import 'location_cache_manager.dart';
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
@@ -23,6 +25,11 @@ class LocationService {
   Timer? _trackingTimer;
   DateTime? _trackingStartTime;
   Duration? _trackingDuration;
+  
+  // Periodic location storage (every 5 minutes)
+  Timer? _periodicStorageTimer;
+  bool _isPeriodicStorageActive = false;
+  static const Duration _storageInterval = Duration(minutes: 5);
   
   // Location accuracy and update settings
   LocationAccuracy _currentAccuracy = LocationAccuracy.high;
@@ -143,6 +150,10 @@ class LocationService {
       );
 
       _currentPosition = position;
+      
+      // Cache location for auto-sync
+      await _cacheLocationForSync(position);
+      
       return position;
     } catch (e) {
       print('Error getting current location: $e');
@@ -183,6 +194,9 @@ class LocationService {
           locationController.add(position);
         }
         
+        // Cache location for auto-sync
+        _cacheLocationForSync(position);
+        
         print('📍 Location update: ${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}');
         print('🎯 Accuracy: ${position.accuracy.toStringAsFixed(1)}m, Speed: ${position.speed.toStringAsFixed(1)}m/s');
       },
@@ -199,6 +213,9 @@ class LocationService {
         stopLocationTracking();
       });
     }
+
+    // Start periodic location storage (every 5 minutes)
+    startPeriodicLocationStorage();
 
     print('✅ Location tracking started successfully');
   }
@@ -249,11 +266,118 @@ class LocationService {
     _trackingTimer?.cancel();
     _trackingTimer = null;
     
+    // Stop periodic location storage
+    stopPeriodicLocationStorage();
+    
     _isTracking = false;
     _trackingStartTime = null;
     _trackingDuration = null;
     
     print('✅ Location tracking stopped successfully');
+  }
+
+  /// Start periodic location storage (every 5 minutes)
+  void startPeriodicLocationStorage() {
+    if (_isPeriodicStorageActive) {
+      print('⚠️  Periodic location storage already active');
+      return;
+    }
+
+    print('💾 Starting periodic location storage (every 5 minutes)...');
+    _isPeriodicStorageActive = true;
+
+    // Store current location immediately
+    _storeCurrentLocation();
+
+    // Set up periodic timer to store location every 5 minutes
+    _periodicStorageTimer = Timer.periodic(_storageInterval, (timer) {
+      _storeCurrentLocation();
+    });
+
+    print('✅ Periodic location storage started successfully');
+  }
+
+  /// Stop periodic location storage
+  void stopPeriodicLocationStorage() {
+    if (!_isPeriodicStorageActive) {
+      print('⚠️  Periodic location storage is not active');
+      return;
+    }
+
+    print('🛑 Stopping periodic location storage...');
+    
+    _periodicStorageTimer?.cancel();
+    _periodicStorageTimer = null;
+    _isPeriodicStorageActive = false;
+    
+    print('✅ Periodic location storage stopped successfully');
+  }
+
+  /// Store current location to SQLite database
+  Future<void> _storeCurrentLocation() async {
+    if (_currentPosition == null) {
+      print('⚠️  No current position available for storage');
+      return;
+    }
+
+    try {
+      final offlineDb = OfflineDatabaseService.instance;
+      final id = await offlineDb.storeLocationData(_currentPosition!);
+      
+      if (id > 0) {
+        print('💾 Location stored to database with ID: $id');
+        print('📍 Stored position: ${_currentPosition!.latitude.toStringAsFixed(6)}, ${_currentPosition!.longitude.toStringAsFixed(6)}');
+        print('🎯 Accuracy: ${_currentPosition!.accuracy.toStringAsFixed(1)}m at ${DateTime.fromMillisecondsSinceEpoch(_currentPosition!.timestamp.millisecondsSinceEpoch)}');
+      } else {
+        print('❌ Failed to store location to database');
+      }
+    } catch (e) {
+      print('❌ Error storing location to database: $e');
+    }
+  }
+
+  /// Get periodic storage status
+  bool get isPeriodicStorageActive => _isPeriodicStorageActive;
+
+  /// Start periodic location storage independently (without tracking)
+  Future<bool> startPeriodicLocationStorageOnly() async {
+    if (!_isInitialized) {
+      print('❌ Location service not initialized. Call initialize() first.');
+      return false;
+    }
+
+    // Get current location first
+    final position = await getCurrentLocation();
+    if (position == null) {
+      print('❌ Cannot start periodic storage without location access');
+      return false;
+    }
+
+    startPeriodicLocationStorage();
+    return true;
+  }
+
+  /// Get stored location count for monitoring
+  Future<int> getStoredLocationCount() async {
+    try {
+      final offlineDb = OfflineDatabaseService.instance;
+      final stats = await offlineDb.getServiceStats();
+      return stats['totalLocations'] ?? 0;
+    } catch (e) {
+      print('❌ Error getting stored location count: $e');
+      return 0;
+    }
+  }
+
+  /// Get recent stored locations for monitoring
+  Future<List<Map<String, dynamic>>> getRecentStoredLocations({int limit = 10}) async {
+    try {
+      final offlineDb = OfflineDatabaseService.instance;
+      return await offlineDb.getRecentStoredLocations(limit: limit);
+    } catch (e) {
+      print('❌ Error getting recent stored locations: $e');
+      return [];
+    }
   }
 
   /// Update tracking accuracy and filter settings
@@ -378,10 +502,40 @@ class LocationService {
     return 'Poor (${accuracy.toStringAsFixed(1)}m)';
   }
 
+  /// Cache location data for auto-sync functionality
+  Future<void> _cacheLocationForSync(Position position) async {
+    try {
+      final cacheManager = LocationCacheManager.instance;
+      
+      // Only cache if user ID is set (user is logged in)
+      final userId = cacheManager.getUserId();
+      if (userId == null || userId.isEmpty) {
+        return; // Skip caching if no user logged in
+      }
+      
+      // Create location data for caching
+      final locationData = CachedLocationData(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        timestamp: DateTime.now(),
+        accuracy: position.accuracy,
+        userId: userId,
+      );
+      
+      // Save location to cache (this will be synced when connectivity returns)
+      await cacheManager.saveLastLocation(locationData);
+      
+    } catch (e) {
+      print('⚠️ Failed to cache location for sync: $e');
+      // Don't throw error - location tracking should continue even if caching fails
+    }
+  }
+
   /// Dispose resources
   void dispose() {
     print('🧹 Disposing location service...');
     stopLocationTracking();
+    stopPeriodicLocationStorage();
     if (_locationController != null && !_locationController!.isClosed) {
       _locationController!.close();
       _locationController = null;

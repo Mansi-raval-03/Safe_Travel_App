@@ -12,13 +12,65 @@ import 'screens/offline_sos_screen.dart';
 import 'screens/offline_emergency_contacts_screen.dart';
 import 'screens/enhanced_offline_sos_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/location_storage_demo_screen.dart';
 import 'models/user.dart';
 import 'services/auth_service.dart';
+import 'services/auto_location_sync_service.dart';
+import 'services/background_sync_worker.dart';
+import 'services/location_cache_manager.dart';
+import 'services/auto_sync_auth_manager.dart';
+import 'config/api_config.dart';
 
 import 'services/integrated_offline_emergency_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize auto location sync services
+  await _initializeAutoLocationSync();
+  
   runApp(SafeTravelApp());
+}
+
+/// Initialize the auto location sync feature
+Future<void> _initializeAutoLocationSync() async {
+  try {
+    final syncService = AutoLocationSyncService.instance;
+    final backgroundWorker = BackgroundSyncWorker.instance;
+    final cacheManager = LocationCacheManager.instance;
+
+    // Initialize background worker first
+    await backgroundWorker.initialize();
+
+    // Initialize sync service with configuration
+    await syncService.initialize(
+      config: AutoSyncConfig(
+        baseUrl: ApiConfig.currentBaseUrl.replaceAll('/api/v1', ''), // Remove API prefix for sync endpoint
+        offlineThreshold: const Duration(minutes: 15),
+        syncTimeout: const Duration(seconds: 30),
+        maxRetries: 3,
+        retryDelay: const Duration(seconds: 5),
+        enableBackgroundSync: true,
+      ),
+    );
+
+    // Get stored auth token if exists
+    final storedToken = await AuthService.getAuthToken();
+    if (storedToken != null && storedToken.isNotEmpty) {
+      syncService.setAuthToken(storedToken);
+    }
+
+    // Get current user if logged in
+    final currentUser = await AuthService.getCurrentUser();
+    if (currentUser != null) {
+      await cacheManager.setUserId(currentUser.id);
+    }
+
+    print('✅ Auto Location Sync initialized successfully');
+  } catch (e) {
+    print('❌ Failed to initialize Auto Location Sync: $e');
+    // Don't block the app if auto-sync initialization fails
+  }
 }
 
 class SafeTravelApp extends StatelessWidget {
@@ -176,9 +228,12 @@ class _MainAppState extends State<MainApp> {
       if (isTokenExpired) {
         // Try silent refresh in background
         AuthService.refreshToken().then((result) {
-          if (result.success) {
-            AuthService.getCurrentUser().then((user) {
+          if (result.success && result.token != null) {
+            AuthService.getCurrentUser().then((user) async {
               if (mounted && user != null) {
+                // Update auto-sync with refreshed token
+                await AutoSyncAuthManager.instance.onLoginSuccess(user, result.token!);
+                
                 setState(() {
                   _user = user;
                   _currentScreen = 2; // Navigate to home
@@ -192,7 +247,12 @@ class _MainAppState extends State<MainApp> {
 
       // Get cached user data if available
       final user = await AuthService.getCurrentUser();
-      if (mounted && user != null) {
+      final token = await AuthService.getAuthToken();
+      
+      if (mounted && user != null && token != null) {
+        // Restore auto-sync for existing session
+        await AutoSyncAuthManager.instance.onLoginSuccess(user, token);
+        
         setState(() {
           _user = user;
           _currentScreen = 2; // Navigate to home
@@ -221,7 +281,10 @@ class _MainAppState extends State<MainApp> {
     try {
       final result = await AuthService.signin(email, password);
       
-      if (result.success && result.user != null) {
+      if (result.success && result.user != null && result.token != null) {
+        // Setup auto-sync for the logged-in user
+        await AutoSyncAuthManager.instance.onLoginSuccess(result.user!, result.token!);
+        
         // Navigation on success with loading cleared
         setState(() {
           _user = result.user;
@@ -254,7 +317,10 @@ class _MainAppState extends State<MainApp> {
       // Directly create account without email verification
       final result = await AuthService.signup(name, email, phone, password);
       
-      if (result.success && result.user != null) {
+      if (result.success && result.user != null && result.token != null) {
+        // Setup auto-sync for the new user
+        await AutoSyncAuthManager.instance.onLoginSuccess(result.user!, result.token!);
+        
         // Navigate directly to home screen
         setState(() {
           _user = result.user;
@@ -281,6 +347,9 @@ class _MainAppState extends State<MainApp> {
 
   Future<void> _handleSignout() async {
     try {
+      // Clear auto-sync data before signing out
+      await AutoSyncAuthManager.instance.onLogout();
+      
       await AuthService.signout();
       setState(() {
         _user = null;
@@ -362,6 +431,8 @@ class _MainAppState extends State<MainApp> {
         onUpdateUser: _updateUser,
         onNavigate: _navigateToScreen,
       );
+    case 8:
+      return LocationStorageDemoScreen();
     case 9:
       return const OfflineSOSScreen();
     case 10:

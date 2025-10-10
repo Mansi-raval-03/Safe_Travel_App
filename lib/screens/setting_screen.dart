@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_navigation.dart';
+import '../services/auto_sync_auth_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Function(int) onNavigate;
@@ -29,10 +30,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     'locationAccuracy': 'high',
   };
 
+  Map<String, dynamic> _syncStatus = {
+    'isInitialized': false,
+    'isSyncing': false,
+    'hasAuthToken': false,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _updateSyncStatus();
+  }
+
   void _updateSetting(String key, dynamic value) {
     setState(() {
       settings[key] = value;
     });
+  }
+
+  Future<void> _updateSyncStatus() async {
+    try {
+      final status = AutoSyncAuthManager.instance.getSyncStatus();
+      setState(() {
+        _syncStatus = status;
+      });
+    } catch (e) {
+      print('Error getting sync status: $e');
+    }
   }
 
   @override
@@ -557,7 +581,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 _buildStatusItem('Network', 'Connected', Icons.wifi, Color(0xFF10B981)),
                 _buildStatusItem('GPS', 'Active', Icons.location_on, Color(0xFF3B82F6)),
-                _buildStatusItem('Battery', '87%', Icons.battery_full, Color(0xFF10B981)),
+                _buildSyncStatusItem(),
                 _buildStatusItem('Safety', 'Ready', Icons.shield, Color(0xFF10B981)),
               ],
             ),
@@ -595,6 +619,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSyncStatusItem() {
+    String status;
+    Color color;
+    IconData icon;
+
+    if (!_syncStatus['isInitialized']) {
+      status = 'Off';
+      color = Colors.grey;
+      icon = Icons.sync_disabled;
+    } else if (_syncStatus['isSyncing']) {
+      status = 'Syncing';
+      color = Color(0xFFF59E0B);
+      icon = Icons.sync;
+    } else if (_syncStatus['hasAuthToken']) {
+      status = 'Ready';
+      color = Color(0xFF10B981);
+      icon = Icons.cloud_done;
+    } else {
+      status = 'No Auth';
+      color = Color(0xFFEF4444);
+      icon = Icons.cloud_off;
+    }
+
+    return GestureDetector(
+      onTap: _updateSyncStatus,
+      child: Container(
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 24),
+            SizedBox(height: 4),
+            Text(
+              'Auto-Sync',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            Text(
+              status,
+              style: TextStyle(
+                fontSize: 10,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
