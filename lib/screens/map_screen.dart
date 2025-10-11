@@ -718,13 +718,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
     }
   }
 
-  /// Show SOS settings screen
-  void _showSOSSettings() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => SOSSettingsScreen()),
-    );
-  }
+
 
   /// Show error snackbar
   void _showErrorSnackBar(String message) {
@@ -1858,13 +1852,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                             constraints: BoxConstraints(minWidth: 32, minHeight: 32),
                                             tooltip: 'Refresh emergency contacts',
                                           ),
-                                          IconButton(
-                                            onPressed: _showSOSSettings,
-                                            icon: Icon(Icons.settings, size: 18, color: Colors.orange.shade700),
-                                            padding: EdgeInsets.zero,
-                                            constraints: BoxConstraints(minWidth: 32, minHeight: 32),
-                                            tooltip: 'SOS Settings',
-                                          ),
+                                         
                                           if (_emergencyContactsCount == 0)
                                             IconButton(
                                               onPressed: () async {

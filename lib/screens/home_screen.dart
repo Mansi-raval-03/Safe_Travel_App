@@ -6,6 +6,8 @@ import '../services/emergency_contact_service.dart';
 import '../services/fake_call_service.dart';
 import '../services/emergency_siren_service.dart';
 import 'fake_call_screen.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 class HomeScreen extends StatefulWidget {
   final User? user;
@@ -33,6 +35,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final FakeCallService _fakeCallService = FakeCallService();
   final EmergencySirenService _sirenService = EmergencySirenService();
   bool _isSirenActive = false;
+
+  // Location/address state
+  String _currentAddress = 'Fetching address...';
+  bool _isLoadingAddress = true;
 
   @override
   void initState() {
@@ -65,6 +71,77 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     // Load emergency contacts data
     _loadEmergencyContacts();
+
+    // Load current location/address
+    _fetchCurrentAddress();
+  }
+
+  /// Fetch current location and address
+  Future<void> _fetchCurrentAddress() async {
+    setState(() {
+      _isLoadingAddress = true;
+      _currentAddress = 'Fetching address...';
+    });
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() {
+          _currentAddress = 'Location services disabled';
+          _isLoadingAddress = false;
+        });
+        return;
+      }
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _currentAddress = 'Location permission denied';
+            _isLoadingAddress = false;
+          });
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _currentAddress = 'Location permission permanently denied';
+          _isLoadingAddress = false;
+        });
+        return;
+      }
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        String address = [
+          place.street,
+          place.subLocality,
+          place.locality,
+          place.administrativeArea,
+          place.country,
+        ].where((e) => e != null && e.toString().isNotEmpty).join(', ');
+        setState(() {
+          _currentAddress = address.isNotEmpty ? address : 'Address not available';
+          _isLoadingAddress = false;
+        });
+      } else {
+        setState(() {
+          _currentAddress = 'Address not found';
+          _isLoadingAddress = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching address: $e');
+      setState(() {
+        _currentAddress = 'Error fetching address';
+        _isLoadingAddress = false;
+      });
+    }
   }
 
   /// Load emergency contacts from local SQLite database
@@ -640,7 +717,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '123 Main Street, Downtown',
+                        _currentAddress,
                         style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                       const SizedBox(height: 2),
@@ -653,7 +730,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Updated just now',
+                            _isLoadingAddress ? 'Updating...' : 'Updated just now',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[500],
