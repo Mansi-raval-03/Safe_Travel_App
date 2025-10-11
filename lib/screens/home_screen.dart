@@ -6,27 +6,22 @@ import '../services/emergency_contact_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final User? user;
-  final Function(int) 
-  onNavigate;
+  final Function(int) onNavigate;
 
-  const HomeScreen({
-    Key? key,
-    required this.user,
-    required this.onNavigate,
-  }) : super(key: key);
+  const HomeScreen({Key? key, required this.user, required this.onNavigate})
+    : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _animationController;
   late AnimationController _pulseController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
   late Animation<double> _pulseAnimation;
-  
+
   // Emergency contacts data
   int _emergencyContactsCount = 0;
   bool _isLoadingContacts = true;
@@ -34,48 +29,36 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
-    
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-    
-    _slideAnimation = Tween<double>(
-      begin: 50.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
-    
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation = Tween<double>(begin: 50.0, end: 0.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
+    );
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
 
     _animationController.forward();
     _pulseController.repeat(reverse: true);
-    
+
     // Load emergency contacts data
     _loadEmergencyContacts();
   }
-  
+
   /// Load emergency contacts from local SQLite database
   Future<void> _loadEmergencyContacts() async {
     try {
@@ -146,13 +129,6 @@ class _HomeScreenState extends State<HomeScreen>
         'color': const Color(0xFF8B5CF6),
         'action': () => widget.onNavigate(7),
       },
-      {
-        'title': 'Location Storage Demo',
-        'description': 'Test periodic location storage (every 5 min)',
-        'icon': Icons.storage_rounded,
-        'color': const Color(0xFFF59E0B),
-        'action': () => widget.onNavigate(8),
-      },
     ];
 
     return Scaffold(
@@ -192,7 +168,9 @@ class _HomeScreenState extends State<HomeScreen>
                               animation: _pulseAnimation,
                               builder: (context, child) {
                                 return CustomPaint(
-                                  painter: BackgroundPatternPainter(_pulseAnimation.value),
+                                  painter: BackgroundPatternPainter(
+                                    _pulseAnimation.value,
+                                  ),
                                 );
                               },
                             ),
@@ -206,7 +184,8 @@ class _HomeScreenState extends State<HomeScreen>
                                 children: [
                                   // Top header
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Row(
                                         children: [
@@ -214,27 +193,40 @@ class _HomeScreenState extends State<HomeScreen>
                                             width: 48,
                                             height: 48,
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.2),
-                                              borderRadius: BorderRadius.circular(16),
+                                              color: Colors.white.withOpacity(
+                                                0.2,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
                                               border: Border.all(
-                                                color: Colors.white.withOpacity(0.3),
+                                                color: Colors.white.withOpacity(
+                                                  0.3,
+                                                ),
                                                 width: 2,
                                               ),
                                             ),
-                                            child: const Icon(
-                                              Icons.shield_rounded,
-                                              color: Colors.white,
-                                              size: 24,
+
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(
+                                                16.0,
+                                              ),
+                                              child: const Icon(
+                                                Icons.security_outlined,
+                                                color: Colors.white,
+                                                size: 40,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 12),
                                           Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 'Safe Travel',
                                                 style: TextStyle(
-                                                  color: Colors.white.withOpacity(0.9),
+                                                  color: Colors.white
+                                                      .withOpacity(0.9),
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w500,
                                                 ),
@@ -254,9 +246,13 @@ class _HomeScreenState extends State<HomeScreen>
                                       Container(
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           border: Border.all(
-                                            color: Colors.white.withOpacity(0.2),
+                                            color: Colors.white.withOpacity(
+                                              0.2,
+                                            ),
                                           ),
                                         ),
                                         child: IconButton(
@@ -305,7 +301,9 @@ class _HomeScreenState extends State<HomeScreen>
                                         icon: Icons.location_on_rounded,
                                         text: 'GPS Active',
                                         color: const Color(0xFF06B6D4),
-                                        onTap: () => widget.onNavigate(3), // Navigate to map screen
+                                        onTap: () => widget.onNavigate(
+                                          3,
+                                        ), // Navigate to map screen
                                       ),
                                     ],
                                   ),
@@ -321,24 +319,28 @@ class _HomeScreenState extends State<HomeScreen>
 
                 // Quick Actions Grid
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 16.0,
+                  ),
                   sliver: SliverGrid(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final action = quickActions[index];
-                        return Transform.translate(
-                          offset: Offset(0, _slideAnimation.value * (index + 1) * 20),
-                          child: _buildActionCard(action, index),
-                        );
-                      },
-                      childCount: quickActions.length,
-                    ),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 1.0,
-                    ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final action = quickActions[index];
+                      return Transform.translate(
+                        offset: Offset(
+                          0,
+                          _slideAnimation.value * (index + 1) * 20,
+                        ),
+                        child: _buildActionCard(action, index),
+                      );
+                    }, childCount: quickActions.length),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 1.0,
+                        ),
                   ),
                 ),
 
@@ -350,7 +352,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
 
-                // Safety Status Card  
+                // Safety Status Card
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
@@ -359,9 +361,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
 
                 // Bottom padding
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 100),
-                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ),
           );
@@ -387,9 +387,7 @@ class _HomeScreenState extends State<HomeScreen>
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.2),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.3),
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -419,10 +417,7 @@ class _HomeScreenState extends State<HomeScreen>
           scale: value,
           child: Container(
             width: double.infinity,
-            constraints: const BoxConstraints(
-              minHeight: 160,
-              maxHeight: 180,
-            ),
+            constraints: const BoxConstraints(minHeight: 160, maxHeight: 180),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
@@ -446,7 +441,10 @@ class _HomeScreenState extends State<HomeScreen>
                 onTap: action['action'] as VoidCallback,
                 borderRadius: BorderRadius.circular(20),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
@@ -568,10 +566,7 @@ class _HomeScreenState extends State<HomeScreen>
                       const SizedBox(height: 4),
                       Text(
                         '123 Main Street, Downtown',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                       const SizedBox(height: 2),
                       Row(
@@ -676,13 +671,17 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(height: 20),
             _buildStatusRow(
-              'Emergency Contacts', 
-              _isLoadingContacts 
-                ? 'Loading...' 
-                : '$_emergencyContactsCount contact${_emergencyContactsCount == 1 ? '' : 's'}', 
-              const Color(0xFF10B981)
+              'Emergency Contacts',
+              _isLoadingContacts
+                  ? 'Loading...'
+                  : '$_emergencyContactsCount contact${_emergencyContactsCount == 1 ? '' : 's'}',
+              const Color(0xFF10B981),
             ),
-            _buildStatusRow('Location Sharing', 'Active', const Color(0xFF06B6D4)),
+            _buildStatusRow(
+              'Location Sharing',
+              'Active',
+              const Color(0xFF06B6D4),
+            ),
             _buildStatusRow('Offline Mode', 'Ready', const Color(0xFF8B5CF6)),
           ],
         ),
@@ -698,10 +697,7 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF6B7280),
-            ),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -727,7 +723,7 @@ class _HomeScreenState extends State<HomeScreen>
 // Custom painter for background pattern
 class BackgroundPatternPainter extends CustomPainter {
   final double animationValue;
-  
+
   BackgroundPatternPainter(this.animationValue);
 
   @override

@@ -46,6 +46,8 @@ dependencies:
   workmanager: ^0.9.0
   # Real-time location tracking dependencies  
   flutter_background_service: ^5.0.10
+  # SVG support for logo
+  flutter_svg: ^2.0.9
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -54,6 +56,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   sqflite_common_ffi: ^2.3.3
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.3
   
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -76,9 +80,9 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/images/safe travel-01.png
+    - assets/images/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -105,3 +109,45 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Flutter Launcher Icons Configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/safe travel-01.png"
+  min_sdk_android: 21
+  # Adaptive icon for Android
+  adaptive_icon_background: "#6366F1"
+  adaptive_icon_foreground: "assets/images/safe travel-01.png"
+  # Remove alpha channel for iOS
+  remove_alpha_ios: true
+
+# Flutter Native Splash Screen Configuration
+flutter_native_splash:
+  # Background color for splash screen
+  color: "#FFFFFF"
+  # Logo image for splash screen
+  image: "assets/images/safe travel-01.png"
+  # Branding image at bottom (optional)
+  branding: "assets/images/safe travel-01.png"
+  branding_mode: bottom
+  
+  # Dark mode settings
+  color_dark: "#1E293B"
+  image_dark: "assets/images/safe travel-01.png"
+  
+  # Android 12+ specific settings
+  android_12:
+    image: "assets/images/safe travel-01.png"
+    color: "#FFFFFF"
+    icon_background_color: "#6366F1"
+    image_dark: "assets/images/safe travel-01.png"
+    color_dark: "#1E293B"
+    icon_background_color_dark: "#8B5CF6"
+  
+  # Platform settings
+  android: true
+  ios: true
+  web: false
+
+

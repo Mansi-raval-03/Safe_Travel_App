@@ -48,7 +48,7 @@ class _MapScreenState extends State<MapScreen> {
   
   // Map settings
   Set<Marker> _markers = {};
-  LatLng _initialCameraPosition = const LatLng(37.7749, -122.4194); // Default to San Francisco
+  LatLng _initialCameraPosition = const LatLng(22.2897, 70.7783); // Atmiya University, Rajkot
   
   bool _isLocationServiceInitialized = false;
   bool _isSocketConnected = false;
@@ -366,6 +366,41 @@ This is an automated emergency message from Safe Travel App. Please respond imme
       );
     }
     
+    // Add emergency services markers from nearby services
+    print('🏥 Adding ${_nearbyServices.length} emergency service markers');
+    for (var service in _nearbyServices) {
+      if (service['latitude'] != null && service['longitude'] != null) {
+        BitmapDescriptor markerColor;
+        
+        // Color code by service type
+        switch (service['type']) {
+          case 'hospital':
+            markerColor = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+            break;
+          case 'police':
+            markerColor = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+            break;
+          case 'fuel':
+            markerColor = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
+            break;
+          default:
+            markerColor = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet);
+        }
+        
+        markers.add(
+          Marker(
+            markerId: MarkerId('service_${service['name']}'),
+            position: LatLng(service['latitude'], service['longitude']),
+            infoWindow: InfoWindow(
+              title: service['name'],
+              snippet: '${service['type'].toUpperCase()} • ${service['phone']}',
+            ),
+            icon: markerColor,
+          ),
+        );
+      }
+    }
+    
     // Add nearby users markers
     print('👥 Adding ${_nearbyUsers.length} nearby user markers');
     for (int i = 0; i < _nearbyUsers.length; i++) {
@@ -389,7 +424,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
       }
     }
     
-    print('✅ Updated ${markers.length} markers');
+    print('✅ Updated ${markers.length} markers (${_nearbyServices.length} services + ${_nearbyUsers.length} users)');
     setState(() {
       _markers = markers;
     });
@@ -850,6 +885,98 @@ This is an automated emergency message from Safe Travel App. Please respond imme
         ),
       );
     }
+  }
+
+  /// Build helpline card widget
+  Widget _buildHelplineCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String number,
+    required String description,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: iconColor,
+              size: 20,
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () async {
+              try {
+                await EmergencyLocationService.makeCall(number);
+                print('📞 Calling $title at $number');
+              } catch (e) {
+                print('❌ Error calling helpline: $e');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Could not call $title'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            icon: Icon(Icons.phone, size: 14),
+            label: Text(
+              number,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: iconColor,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1507,6 +1634,114 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                   ),
                                 );
                               }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // Women & Children Safety Helplines
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.shield_outlined,
+                                  size: 20,
+                                  color: Color(0xFFEC4899),
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Women & Children Safety',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            
+                            // Women Helpline
+                            _buildHelplineCard(
+                              icon: Icons.woman,
+                              iconColor: Color(0xFFEC4899),
+                              title: 'Women Helpline',
+                              number: '1091',
+                              description: '24/7 Emergency helpline for women in distress',
+                            ),
+                            SizedBox(height: 8),
+                            
+                            // Child Helpline
+                            _buildHelplineCard(
+                              icon: Icons.child_care,
+                              iconColor: Color(0xFF8B5CF6),
+                              title: 'Child Helpline',
+                              number: '1098',
+                              description: '24/7 Emergency helpline for children in need',
+                            ),
+                            SizedBox(height: 8),
+                            
+                            // National Commission for Women
+                            _buildHelplineCard(
+                              icon: Icons.support_agent,
+                              iconColor: Color(0xFFEC4899),
+                              title: 'NCW Helpline',
+                              number: '7827-170-170',
+                              description: 'National Commission for Women',
+                            ),
+                            SizedBox(height: 8),
+                            
+                            // Cyber Crime Helpline
+                            _buildHelplineCard(
+                              icon: Icons.computer,
+                              iconColor: Color(0xFF3B82F6),
+                              title: 'Cyber Crime Helpline',
+                              number: '1930',
+                              description: 'Report cyber crimes and harassment',
+                            ),
+                            SizedBox(height: 12),
+                            
+                            // Info banner
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.pink.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.pink.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_outline, size: 16, color: Colors.pink.shade700),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'All helplines are toll-free and available 24/7',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.pink.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),

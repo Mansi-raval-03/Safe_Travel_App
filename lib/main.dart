@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:safe_travel_app/models/emergency_screen.dart';
 import 'package:safe_travel_app/screens/setting_screen.dart';
 import 'screens/signin_screen.dart';
@@ -24,7 +25,9 @@ import 'config/api_config.dart';
 import 'services/integrated_offline_emergency_service.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Preserve splash screen while initializing
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   
   // Initialize auto location sync services
   await _initializeAutoLocationSync();
@@ -190,7 +193,11 @@ class _MainAppState extends State<MainApp> {
     super.initState();
     _checkAuthenticationStatus();
     _initializeEmergencyService();
-
+    
+    // Remove splash screen after a short delay to ensure UI is ready
+    Future.delayed(const Duration(milliseconds: 500), () {
+      FlutterNativeSplash.remove();
+    });
   }
 
   /// Initialize the offline emergency service

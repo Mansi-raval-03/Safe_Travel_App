@@ -96,24 +96,27 @@ class _SigninScreenState extends State<SigninScreen> {
           height: 80,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
+              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF2563EB).withOpacity(0.2),
+                color: const Color(0xFF6366F1).withOpacity(0.3),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: const Icon(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: const Icon(
             Icons.security_outlined,
             color: Colors.white,
             size: 40,
           ),
+        ),
         ),
         const SizedBox(height: 24),
         const Text(
@@ -139,24 +142,7 @@ class _SigninScreenState extends State<SigninScreen> {
   Widget _buildForm() {
     return Column(
       children: [
-        if (widget.errorMessage != null) ...[
-          Container(
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.only(bottom: 24),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              border: Border.all(color: const Color(0xFFF87171)),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              widget.errorMessage!,
-              style: const TextStyle(
-                color: Color(0xFFDC2626),
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ],
+        
         TextField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,

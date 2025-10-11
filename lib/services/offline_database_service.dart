@@ -20,7 +20,7 @@ class OfflineDatabaseService {
 
   // Database configuration
   static const String _dbName = 'safe_travel_offline.db';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2; // Incremented for trip_events table
 
   // Table names
   static const String tableSOSAlerts = 'sos_alerts';
@@ -28,6 +28,7 @@ class OfflineDatabaseService {
   static const String tableEmergencyContacts = 'emergency_contacts';
   static const String tablePendingShares = 'pending_shares';
   static const String tableOfflineMessages = 'offline_messages';
+  static const String tableTripEvents = 'trip_events';
 
   /// Initialize database connection
   Future<Database> get database async {
@@ -161,6 +162,40 @@ class OfflineDatabaseService {
     batch.execute('CREATE INDEX idx_pending_shares_status ON $tablePendingShares(status)');
     batch.execute('CREATE INDEX idx_offline_messages_priority ON $tableOfflineMessages(priority, status)');
 
+    // Trip Events table for offline trip management
+    batch.execute('''
+      CREATE TABLE $tableTripEvents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        backend_id TEXT, -- Server-assigned ID after sync
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        start_time INTEGER NOT NULL,
+        end_time INTEGER NOT NULL,
+        destination_latitude REAL NOT NULL,
+        destination_longitude REAL NOT NULL,
+        destination_address TEXT,
+        destination_name TEXT,
+        current_latitude REAL,
+        current_longitude REAL,
+        current_address TEXT,
+        notes TEXT,
+        status TEXT DEFAULT 'scheduled', -- scheduled, active, completed, missed, alert_triggered, cancelled
+        travel_mode TEXT DEFAULT 'other', -- walking, driving, public_transport, cycling, other
+        last_location_update INTEGER,
+        is_emergency_contacts_notified INTEGER DEFAULT 0,
+        alert_threshold_location_timeout INTEGER DEFAULT 30,
+        alert_threshold_destination_tolerance INTEGER DEFAULT 500,
+        is_synced INTEGER DEFAULT 0,
+        sync_version INTEGER DEFAULT 1,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+      )
+    ''');
+
+    batch.execute('CREATE INDEX idx_trip_events_status ON $tableTripEvents(status)');
+    batch.execute('CREATE INDEX idx_trip_events_start_time ON $tableTripEvents(start_time)');
+    batch.execute('CREATE INDEX idx_trip_events_sync ON $tableTripEvents(is_synced)');
+
     await batch.commit();
     print('✅ Database tables created successfully');
   }
@@ -168,7 +203,44 @@ class OfflineDatabaseService {
   /// Handle database upgrades
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     print('📈 Upgrading database from version $oldVersion to $newVersion');
-    // Handle future schema changes here
+    
+    // Upgrade from version 1 to 2: Add trip_events table
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE $tableTripEvents (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          backend_id TEXT,
+          user_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          start_time INTEGER NOT NULL,
+          end_time INTEGER NOT NULL,
+          destination_latitude REAL NOT NULL,
+          destination_longitude REAL NOT NULL,
+          destination_address TEXT,
+          destination_name TEXT,
+          current_latitude REAL,
+          current_longitude REAL,
+          current_address TEXT,
+          notes TEXT,
+          status TEXT DEFAULT 'scheduled',
+          travel_mode TEXT DEFAULT 'other',
+          last_location_update INTEGER,
+          is_emergency_contacts_notified INTEGER DEFAULT 0,
+          alert_threshold_location_timeout INTEGER DEFAULT 30,
+          alert_threshold_destination_tolerance INTEGER DEFAULT 500,
+          is_synced INTEGER DEFAULT 0,
+          sync_version INTEGER DEFAULT 1,
+          created_at INTEGER DEFAULT (strftime('%s', 'now')),
+          updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+      ''');
+
+      await db.execute('CREATE INDEX idx_trip_events_status ON $tableTripEvents(status)');
+      await db.execute('CREATE INDEX idx_trip_events_start_time ON $tableTripEvents(start_time)');
+      await db.execute('CREATE INDEX idx_trip_events_sync ON $tableTripEvents(is_synced)');
+      
+      print('✅ Trip events table added in database upgrade');
+    }
   }
 
   /// Database opened callback
@@ -737,6 +809,286 @@ class OfflineDatabaseService {
       await _database!.close();
       _database = null;
       print('🔒 Database connection closed');
+    }
+  }
+
+  // ==================== TRIP EVENTS METHODS ====================
+
+  /// Store trip event for offline access
+  Future<int> storeTripEvent(Map<String, dynamic> tripEvent) async {
+    try {
+      final db = await database;
+      final id = await db.insert(tableTripEvents, tripEvent);
+      print('🗓️ Trip event stored with ID: $id');
+      return id;
+    } catch (e) {
+      print('❌ Error storing trip event: $e');
+      rethrow;
+    }
+  }
+
+  /// Get all trip events (with optional status filter)
+  Future<List<Map<String, dynamic>>> getTripEvents({String? status, String? userId}) async {
+    try {
+      final db = await database;
+      String? whereClause;
+      List<dynamic>? whereArgs;
+
+      if (status != null && userId != null) {
+        whereClause = 'status = ? AND user_id = ?';
+        whereArgs = [status, userId];
+      } else if (status != null) {
+        whereClause = 'status = ?';
+        whereArgs = [status];
+      } else if (userId != null) {
+        whereClause = 'user_id = ?';
+        whereArgs = [userId];
+      }
+
+      final trips = await db.query(
+        tableTripEvents,
+        where: whereClause,
+        whereArgs: whereArgs,
+        orderBy: 'start_time DESC',
+      );
+
+      print('🗓️ Retrieved ${trips.length} trip events');
+      return trips;
+    } catch (e) {
+      print('❌ Error getting trip events: $e');
+      return [];
+    }
+  }
+
+  /// Get specific trip event by ID
+  Future<Map<String, dynamic>?> getTripEvent(int id) async {
+    try {
+      final db = await database;
+      final trips = await db.query(
+        tableTripEvents,
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+
+      if (trips.isNotEmpty) {
+        print('🗓️ Retrieved trip event with ID: $id');
+        return trips.first;
+      }
+      return null;
+    } catch (e) {
+      print('❌ Error getting trip event: $e');
+      return null;
+    }
+  }
+
+  /// Update trip event
+  Future<void> updateTripEvent(int id, Map<String, dynamic> updates) async {
+    try {
+      final db = await database;
+      
+      // Add updated_at timestamp
+      final data = {
+        ...updates,
+        'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'is_synced': 0, // Mark as unsynced when updated
+      };
+
+      await db.update(
+        tableTripEvents,
+        data,
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+      print('🗓️ Trip event $id updated');
+    } catch (e) {
+      print('❌ Error updating trip event: $e');
+      rethrow;
+    }
+  }
+
+  /// Update trip location during active trip
+  Future<void> updateTripLocation(
+    int id,
+    double latitude,
+    double longitude, {
+    String? address,
+  }) async {
+    try {
+      final db = await database;
+      await db.update(
+        tableTripEvents,
+        {
+          'current_latitude': latitude,
+          'current_longitude': longitude,
+          'current_address': address,
+          'last_location_update': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          'is_synced': 0,
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+      print('📍 Trip $id location updated');
+    } catch (e) {
+      print('❌ Error updating trip location: $e');
+    }
+  }
+
+  /// Get unsynced trip events
+  Future<List<Map<String, dynamic>>> getUnsyncedTripEvents() async {
+    try {
+      final db = await database;
+      final trips = await db.query(
+        tableTripEvents,
+        where: 'is_synced = 0',
+        orderBy: 'created_at ASC',
+      );
+
+      print('🗓️ Retrieved ${trips.length} unsynced trip events');
+      return trips;
+    } catch (e) {
+      print('❌ Error getting unsynced trip events: $e');
+      return [];
+    }
+  }
+
+  /// Mark trip event as synced
+  Future<void> markTripEventSynced(int id, {String? backendId}) async {
+    try {
+      final db = await database;
+      final updates = <String, dynamic>{'is_synced': 1};
+      
+      if (backendId != null) {
+        updates['backend_id'] = backendId;
+      }
+
+      await db.update(
+        tableTripEvents,
+        updates,
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+      print('✅ Trip event $id marked as synced');
+    } catch (e) {
+      print('❌ Error marking trip event as synced: $e');
+    }
+  }
+
+  /// Get active trip events (currently in progress)
+  Future<List<Map<String, dynamic>>> getActiveTripEvents({String? userId}) async {
+    try {
+      final db = await database;
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      String whereClause = 'status = ? AND start_time <= ? AND end_time >= ?';
+      List<dynamic> whereArgs = ['active', now, now];
+
+      if (userId != null) {
+        whereClause += ' AND user_id = ?';
+        whereArgs.add(userId);
+      }
+
+      final trips = await db.query(
+        tableTripEvents,
+        where: whereClause,
+        whereArgs: whereArgs,
+        orderBy: 'start_time ASC',
+      );
+
+      print('🗓️ Retrieved ${trips.length} active trip events');
+      return trips;
+    } catch (e) {
+      print('❌ Error getting active trip events: $e');
+      return [];
+    }
+  }
+
+  /// Get upcoming trip events
+  Future<List<Map<String, dynamic>>> getUpcomingTripEvents({String? userId, int limit = 10}) async {
+    try {
+      final db = await database;
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      String whereClause = 'status = ? AND start_time > ?';
+      List<dynamic> whereArgs = ['scheduled', now];
+
+      if (userId != null) {
+        whereClause += ' AND user_id = ?';
+        whereArgs.add(userId);
+      }
+
+      final trips = await db.query(
+        tableTripEvents,
+        where: whereClause,
+        whereArgs: whereArgs,
+        orderBy: 'start_time ASC',
+        limit: limit,
+      );
+
+      print('🗓️ Retrieved ${trips.length} upcoming trip events');
+      return trips;
+    } catch (e) {
+      print('❌ Error getting upcoming trip events: $e');
+      return [];
+    }
+  }
+
+  /// Delete trip event (soft delete by setting status to cancelled)
+  Future<void> deleteTripEvent(int id) async {
+    try {
+      final db = await database;
+      await db.update(
+        tableTripEvents,
+        {
+          'status': 'cancelled',
+          'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          'is_synced': 0,
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+      print('🗑️ Trip event $id cancelled');
+    } catch (e) {
+      print('❌ Error deleting trip event: $e');
+      rethrow;
+    }
+  }
+
+  /// Get trip events that need monitoring (active trips that haven't been updated recently)
+  Future<List<Map<String, dynamic>>> getTripsNeedingMonitoring({
+    int timeoutMinutes = 30,
+    String? userId,
+  }) async {
+    try {
+      final db = await database;
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final timeoutThreshold = now - (timeoutMinutes * 60);
+
+      String whereClause = 'status = ? AND (last_location_update IS NULL OR last_location_update < ?)';
+      List<dynamic> whereArgs = ['active', timeoutThreshold];
+
+      if (userId != null) {
+        whereClause += ' AND user_id = ?';
+        whereArgs.add(userId);
+      }
+
+      final trips = await db.query(
+        tableTripEvents,
+        where: whereClause,
+        whereArgs: whereArgs,
+        orderBy: 'last_location_update ASC NULLS FIRST',
+      );
+
+      print('⚠️ Retrieved ${trips.length} trips needing monitoring');
+      return trips;
+    } catch (e) {
+      print('❌ Error getting trips needing monitoring: $e');
+      return [];
     }
   }
 
