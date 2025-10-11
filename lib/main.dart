@@ -358,11 +358,16 @@ class _MainAppState extends State<MainApp> {
       await AutoSyncAuthManager.instance.onLogout();
       
       await AuthService.signout();
+      
+      // Clear user and navigate to signin screen
       setState(() {
         _user = null;
-        _currentScreen = 0; // back to signin
         _errorMessage = '';
       });
+      
+      // Navigate to signin screen (screen 0)
+      _navigateToScreen(0);
+      
     } catch (e) {
       setState(() {
         _errorMessage = 'Sign out failed: ${e.toString()}';

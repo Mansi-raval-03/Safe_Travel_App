@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../services/fake_call_service.dart';
+import '../services/emergency_siren_service.dart';
+import 'fake_call_screen.dart';
 
 class SigninScreen extends StatefulWidget {
   final Function(String email, String password) onSignin;
@@ -23,6 +26,11 @@ class _SigninScreenState extends State<SigninScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  
+  // Emergency services
+  final FakeCallService _fakeCallService = FakeCallService();
+  final EmergencySirenService _sirenService = EmergencySirenService();
+  bool _isSirenActive = false;
 
   void _handleSubmit() {
     // Validate form before submitting
@@ -32,6 +40,59 @@ class _SigninScreenState extends State<SigninScreen> {
     
     // Call signin with validation
     widget.onSignin(_emailController.text.trim(), _passwordController.text);
+  }
+
+  /// Handle fake call button press
+  void _handleFakeCall() {
+    print('📱 Fake Call button pressed');
+    
+    // Start fake call with 3-second delay
+    _fakeCallService.startFakeCall(
+      onCallReceived: () {
+        // Navigate to fake call screen
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const FakeCallScreen(
+              callerName: 'Mom',
+              callerNumber: 'Mobile',
+            ),
+            fullscreenDialog: true,
+          ),
+        );
+      },
+      delaySeconds: 3,
+    );
+    
+    // Show snackbar notification
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('📱 Incoming call in 3 seconds...'),
+        duration: Duration(seconds: 2),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  /// Handle emergency siren button press
+  Future<void> _handleSirenToggle() async {
+    print('🚨 Siren button pressed');
+    
+    final isPlaying = await _sirenService.toggleSiren();
+    
+    setState(() {
+      _isSirenActive = isPlaying;
+    });
+    
+    // Show snackbar notification
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isPlaying ? '🚨 Emergency Siren Activated' : '🔇 Siren Stopped',
+        ),
+        duration: const Duration(seconds: 2),
+        backgroundColor: isPlaying ? Colors.red : Colors.grey,
+      ),
+    );
   }
 
   @override
@@ -79,6 +140,8 @@ class _SigninScreenState extends State<SigninScreen> {
                   ),
                 ),
               _buildSignInButton(),
+              const SizedBox(height: 24),
+              _buildEmergencyButtons(),
               const SizedBox(height: 32),
               _buildSignUpLink(),
             ],
@@ -316,6 +379,97 @@ class _SigninScreenState extends State<SigninScreen> {
                 ),
               ),
       ),
+    );
+  }
+
+  /// Build emergency feature buttons (Fake Call & Siren)
+  Widget _buildEmergencyButtons() {
+    return Column(
+      children: [
+        // Section divider
+        Row(
+          children: [
+            Expanded(child: Divider(color: Colors.grey.shade300)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Emergency Features',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Expanded(child: Divider(color: Colors.grey.shade300)),
+          ],
+        ),
+        const SizedBox(height: 20),
+        
+        // Emergency buttons row
+        Row(
+          children: [
+            // Fake Call button
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _handleFakeCall,
+                icon: const Icon(Icons.phone_in_talk, size: 20),
+                label: const Text(
+                  'Fake Call',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF10B981),
+                  side: const BorderSide(color: Color(0xFF10B981), width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            
+            const SizedBox(width: 12),
+            
+            // Emergency Siren button
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _handleSirenToggle,
+                icon: Icon(
+                  _isSirenActive ? Icons.volume_off : Icons.emergency,
+                  size: 20,
+                ),
+                label: Text(
+                  _isSirenActive ? 'Stop Siren' : 'Siren',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _isSirenActive ? Colors.grey.shade600 : const Color(0xFFEF4444),
+                  side: BorderSide(
+                    color: _isSirenActive ? Colors.grey.shade400 : const Color(0xFFEF4444),
+                    width: 1.5,
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        
+        // Info text
+        const SizedBox(height: 12),
+        Text(
+          'Emergency tools available without login',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey.shade500,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
     );
   }
 

@@ -48,6 +48,8 @@ dependencies:
   flutter_background_service: ^5.0.10
   # SVG support for logo
   flutter_svg: ^2.0.9
+  # Audio playback for fake call and emergency siren
+  audioplayers: ^6.1.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -83,6 +85,8 @@ flutter:
   assets:
     - assets/images/safe travel-01.png
     - assets/images/
+    # Audio files for emergency features
+    - assets/sounds/police-siren-397963.mp3
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

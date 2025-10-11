@@ -3,6 +3,9 @@ import '../models/user.dart';
 import '../widgets/bottom_navigation.dart';
 import '../services/offline_database_service.dart';
 import '../services/emergency_contact_service.dart';
+import '../services/fake_call_service.dart';
+import '../services/emergency_siren_service.dart';
+import 'fake_call_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final User? user;
@@ -25,6 +28,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // Emergency contacts data
   int _emergencyContactsCount = 0;
   bool _isLoadingContacts = true;
+
+  // Emergency services
+  final FakeCallService _fakeCallService = FakeCallService();
+  final EmergencySirenService _sirenService = EmergencySirenService();
+  bool _isSirenActive = false;
 
   @override
   void initState() {
@@ -91,6 +99,59 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
+  /// Handle fake call button press
+  void _handleFakeCall() {
+    print('📱 Fake Call button pressed from home screen');
+    
+    // Start fake call with 3-second delay
+    _fakeCallService.startFakeCall(
+      onCallReceived: () {
+        // Navigate to fake call screen
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const FakeCallScreen(
+              callerName: 'Mom',
+              callerNumber: 'Mobile',
+            ),
+            fullscreenDialog: true,
+          ),
+        );
+      },
+      delaySeconds: 3,
+    );
+    
+    // Show snackbar notification
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('📱 Incoming call in 3 seconds...'),
+        duration: Duration(seconds: 2),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  /// Handle emergency siren button press
+  Future<void> _handleSirenToggle() async {
+    print('🚨 Siren button pressed from home screen');
+    
+    final isPlaying = await _sirenService.toggleSiren();
+    
+    setState(() {
+      _isSirenActive = isPlaying;
+    });
+    
+    // Show snackbar notification
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isPlaying ? '🚨 Emergency Siren Activated' : '🔇 Siren Stopped',
+        ),
+        duration: const Duration(seconds: 2),
+        backgroundColor: isPlaying ? Colors.red : Colors.grey,
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _animationController.dispose();
@@ -114,6 +175,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'icon': Icons.shield_rounded,
         'color': const Color(0xFFEF4444),
         'action': () => widget.onNavigate(4),
+      },
+      {
+        'title': 'Fake Call',
+        'description': 'Simulate incoming call for safety',
+        'icon': Icons.phone_in_talk,
+        'color': const Color(0xFF10B981),
+        'action': _handleFakeCall,
+      },
+      {
+        'title': _isSirenActive ? 'Stop Siren' : 'Emergency Siren',
+        'description': _isSirenActive ? 'Tap to stop alarm' : 'Activate loud emergency alarm',
+        'icon': _isSirenActive ? Icons.volume_off : Icons.emergency,
+        'color': _isSirenActive ? const Color(0xFF6B7280) : const Color(0xFFEF4444),
+        'action': _handleSirenToggle,
       },
       {
         'title': 'Emergency Contacts',
