@@ -277,18 +277,54 @@ class AuthService {
   static Future<bool> isTokenExpired() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token != null && token.isNotEmpty) {
+        // Try to decode JWT `exp` claim if present
+        final exp = _getJwtExpiry(token);
+        if (exp != null) {
+          final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+          return DateTime.now().isAfter(expiry);
+        }
+      }
+
+      // Fallback: use stored auth_timestamp (when backend doesn't return JWT exp)
       final timestamp = prefs.getInt('auth_timestamp');
-      
       if (timestamp == null) return true;
-      
+
       final loginTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
       final now = DateTime.now();
       final difference = now.difference(loginTime);
-      
-      // Token expires after 24 hours
-      return difference.inHours >= 24;
+
+      // Fallback expiry: 30 days
+      return difference.inDays >= 30;
     } catch (e) {
       return true; // Assume expired if error occurs
+    }
+  }
+
+  /// Decode JWT and return `exp` claim as unix seconds, or null if not present
+  static int? _getJwtExpiry(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload = parts[1];
+
+      String normalized = payload;
+      // Add padding if missing
+      while (normalized.length % 4 != 0) {
+        normalized += '=';
+      }
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final Map<String, dynamic> map = json.decode(decoded);
+      if (map.containsKey('exp')) {
+        final expVal = map['exp'];
+        if (expVal is int) return expVal;
+        if (expVal is String) return int.tryParse(expVal);
+      }
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 

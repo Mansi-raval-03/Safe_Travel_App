@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:io' show File;
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:safe_travel_app/models/emergency_screen.dart';
 import 'package:safe_travel_app/screens/setting_screen.dart';
@@ -14,6 +16,7 @@ import 'screens/offline_emergency_contacts_screen.dart';
 import 'screens/enhanced_offline_sos_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/location_storage_demo_screen.dart';
+import 'screens/trips_screen.dart';
 import 'models/user.dart';
 import 'services/auth_service.dart';
 import 'services/auto_location_sync_service.dart';
@@ -27,11 +30,31 @@ import 'services/integrated_offline_emergency_service.dart';
 void main() async {
   // Preserve splash screen while initializing
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+
+  // Quick-start developer mode: if a file named `FAST_RUN` exists in the
+  // project root, skip awaiting heavy initialization to speed up iterative
+  // development and allow hot-reload cycles. This is safe for local testing
+  // and can be removed before production.
+  bool fastRun = false;
+  try {
+    fastRun = File('FAST_RUN').existsSync();
+  } catch (_) {
+    fastRun = false;
+  }
+
+  if (fastRun) {
+    // Remove splash and run app immediately. Initialize services in background.
+  FlutterNativeSplash.remove();
+  runApp(SafeTravelApp());
+  // Start initialization in background (do not await) so app launches fast.
+  _initializeAutoLocationSync();
+    return;
+  }
+
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  
-  // Initialize auto location sync services
+  // Initialize auto location sync services (blocking) for normal runs
   await _initializeAutoLocationSync();
-  
+
   runApp(SafeTravelApp());
 }
 
@@ -42,10 +65,21 @@ Future<void> _initializeAutoLocationSync() async {
     final backgroundWorker = BackgroundSyncWorker.instance;
     final cacheManager = LocationCacheManager.instance;
 
-    // Initialize background worker first
-    await backgroundWorker.initialize();
+    // Initialize background worker only on supported platforms and when not in debug mode.
+    // Workmanager and some platform background initializers can cause crashes on emulators
+    // or during rapid local iteration. Skip background initialization in debug to keep
+    // the app runnable while developing. This can be enabled for production builds.
+    if (!kDebugMode && backgroundWorker.isBackgroundSyncSupported()) {
+      try {
+        await backgroundWorker.initialize();
+      } catch (e) {
+        print('❌ Background worker initialization skipped due to error: $e');
+      }
+    } else {
+      print('⚠️ Skipping background worker initialization (debug/unsupported platform)');
+    }
 
-    // Initialize sync service with configuration
+    // Initialize sync service with configuration (disable background tasks in debug)
     await syncService.initialize(
       config: AutoSyncConfig(
         baseUrl: ApiConfig.currentBaseUrl.replaceAll('/api/v1', ''), // Remove API prefix for sync endpoint
@@ -53,7 +87,7 @@ Future<void> _initializeAutoLocationSync() async {
         syncTimeout: const Duration(seconds: 30),
         maxRetries: 3,
         retryDelay: const Duration(seconds: 5),
-        enableBackgroundSync: true,
+        enableBackgroundSync: !kDebugMode,
       ),
     );
 
@@ -454,6 +488,10 @@ class _MainAppState extends State<MainApp> {
     case 11:
       return EnhancedOfflineSOSScreen(
         onNavigate: _navigateToScreen,
+      );
+    case 12:
+      return TripsScreen(
+        userId: _user?.id ?? '',
       );
     default:
       return SigninScreen(

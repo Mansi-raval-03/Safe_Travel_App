@@ -8,7 +8,6 @@ import '../services/sos_emergency_service.dart';
 import '../services/emergency_contact_service.dart';
 import '../services/enhanced_sos_service.dart';
 import '../services/emergency_location_service.dart';
-import '../screens/sos_settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
@@ -1893,7 +1892,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.red.shade700,
-                                    ),
+                                    ), 
                                   ),
                                 ],
                               ),

@@ -170,8 +170,11 @@ void callbackDispatcher() {
       final authToken = await _getAuthTokenFromStorage();
       
       if (authToken == null) {
-        print('⚠️ No auth token available for background sync');
-        return Future.value(false);
+        // No auth token available — treat as a successful no-op so the Workmanager
+        // job does not get marked as failed. Background tasks should be resilient
+        // when the user is not authenticated.
+        print('⚠️ No auth token available for background sync — skipping');
+        return Future.value(true);
       }
 
       // Initialize sync service with stored token

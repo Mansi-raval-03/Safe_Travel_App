@@ -16,7 +16,6 @@
 
     <application
         android:label="safe_travel_app"
-        android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         
         <!-- Google Maps API Key -->

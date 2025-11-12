@@ -15,12 +15,20 @@ class BottomNavigation extends StatelessWidget {
     // Map screen indices to bottom navigation indices
     int getBottomNavIndex() {
       switch (currentIndex) {
-        case 2: return 0; // Home screen
-        case 3: return 1; // Map screen  
-        case 4: return 2; // SOS screen
-        case 5: return 3; // Contacts screen
-        case 7: return 4; // Profile screen
-        case 6: return 0; // Settings screen - default to Home
+          case 2:
+            return 0; // Home screen
+          case 3:
+            return 1; // Map screen
+          case 12:
+            return 2; // Trips screen
+          case 4:
+            return 3; // SOS screen
+          case 5:
+            return 4; // Contacts screen
+          case 7:
+            return 5; // Profile screen
+          case 6:
+            return 0; // Settings screen - default to Home
         default: return 0; // Default to Home
       }
     }
@@ -49,9 +57,10 @@ class BottomNavigation extends StatelessWidget {
           final screenMap = {
             0: 2, // Home
             1: 3, // Map
-            2: 4, // SOS
-            3: 5, // Contacts
-            4: 7, // Profile
+            2: 12, // Trips
+            3: 4, // SOS
+            4: 5, // Contacts
+            5: 7, // Profile
           };
           onNavigate(screenMap[index] ?? 2);
         },
@@ -70,6 +79,10 @@ class BottomNavigation extends StatelessWidget {
           const BottomNavigationBarItem(
             icon: Icon(Icons.map_rounded),
             label: 'Map',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.departure_board_rounded),
+            label: 'Trips',
           ),
           BottomNavigationBarItem(
             icon: Container(

@@ -19,7 +19,8 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.1
+  # Allow a wider Dart SDK range to improve compatibility with local Flutter SDKs
+  sdk: '>=3.0.0 <4.0.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -39,6 +40,8 @@ dependencies:
   permission_handler: ^12.0.1
   share_plus: ^12.0.0
   http: ^1.2.0
+  uuid: ^4.5.1
+  intl: ^0.18.1
   sqflite: ^2.4.2
   shared_preferences: ^2.3.2
   connectivity_plus: ^6.1.0
@@ -55,20 +58,12 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  flutter_native_splash: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
   sqflite_common_ffi: ^2.3.3
   flutter_launcher_icons: ^0.14.3
-  flutter_native_splash: ^2.4.3
-  
-
-  # The "flutter_lints" package below contains a set of recommended lints to
-  
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
   flutter_lints: ^5.0.0
 
 # For information on the generic Dart part of this file, see the
@@ -155,4 +150,9 @@ flutter_native_splash:
   ios: true
   web: false
 
+# No dependency_overrides. Use hosted packages from pub.dev to ensure
+# reproducible builds and avoid git-subtree cache issues. If you need to
+# pin a package to a git ref for a short term, add it here and remove it
+# once upstream publishes a release.
+ 
 
