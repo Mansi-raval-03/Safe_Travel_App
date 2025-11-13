@@ -275,16 +275,21 @@ This is an automated emergency message from Safe Travel App. Please respond imme
         
         _locationSubscription = _locationService.locationStream.listen(
           (Position position) {
+            // Prevent updates after widget is disposed
+            if (!mounted) return;
+
             print('📍 Location update: ${position.latitude}, ${position.longitude}');
             setState(() {
               _currentPosition = position;
               _updateMarkers();
             });
-            
+
             // Update camera position
             _moveCamera(LatLng(position.latitude, position.longitude));
-            
+
             // Reload nearby emergency services when location changes significantly
+            // Ensure widget still mounted before performing further async work
+            if (!mounted) return;
             _loadNearbyServices();
           },
           onError: (error) {
@@ -320,6 +325,9 @@ This is an automated emergency message from Safe Travel App. Please respond imme
       if (connected) {
         // Listen for nearby users updates
         _nearbyUsersSubscription = _socketService.nearbyUsersStream.listen((users) {
+          // Prevent updates after widget is disposed
+          if (!mounted) return;
+
           setState(() {
             _nearbyUsers = users;
             _updateMarkers();

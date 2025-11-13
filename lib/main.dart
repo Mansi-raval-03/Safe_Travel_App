@@ -3,6 +3,8 @@ import 'dart:io' show File;
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'services/navigation_service.dart';
+import 'services/notification_service.dart';
 import 'package:safe_travel_app/models/emergency_screen.dart';
 import 'package:safe_travel_app/screens/setting_screen.dart';
 import 'screens/signin_screen.dart';
@@ -53,6 +55,14 @@ void main() async {
 
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   // Initialize auto location sync services (blocking) for normal runs
+  // Initialize notifications first (so background handlers are registered)
+  try {
+    await NotificationService.initialize();
+    print('✅ NotificationService initialized');
+  } catch (e) {
+    print('❌ NotificationService initialization failed: $e');
+  }
+
   await _initializeAutoLocationSync();
 
   runApp(SafeTravelApp());
@@ -114,6 +124,7 @@ class SafeTravelApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: NavigationService.navigatorKey,
       title: 'Safe Travel',
       theme: ThemeData(
         useMaterial3: true,

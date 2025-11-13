@@ -62,9 +62,10 @@ class OfflineDatabaseService {
   /// Configure database settings
   Future<void> _onConfigure(Database db) async {
     // Enable foreign key constraints
-    await db.execute('PRAGMA foreign_keys = ON');
+    // Use rawQuery for PRAGMA statements on Android (sqflite)
+    await db.rawQuery('PRAGMA foreign_keys = ON');
     // Enable WAL mode for better concurrency
-    await db.execute('PRAGMA journal_mode = WAL');
+    await db.rawQuery('PRAGMA journal_mode = WAL');
     print('🔧 Database configured with foreign keys and WAL mode');
   }
 

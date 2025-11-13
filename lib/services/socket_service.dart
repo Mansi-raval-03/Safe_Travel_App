@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:geolocator/geolocator.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'location_service.dart';
+import 'navigation_service.dart';
+import 'notification_service.dart';
 
 class SocketIOService {
   static final SocketIOService _instance = SocketIOService._internal();
@@ -95,7 +99,7 @@ class SocketIOService {
     // Listen for emergency alerts
     _socket!.on('emergency_alert', (data) {
       if (data is Map<String, dynamic>) {
-        _handleEmergencyAlert(Map<String, dynamic>.from(data));
+          _handleEmergencyAlert(Map<String, dynamic>.from(data));
       }
     });
 
@@ -189,9 +193,38 @@ class SocketIOService {
 
   /// Handle emergency alerts from other users
   void _handleEmergencyAlert(Map<String, dynamic> alert) {
-    // You can add custom logic here to handle emergency alerts
-    // For example, show notifications, update UI, etc.
     print('Emergency alert received: $alert');
+
+    // Play audible siren (asset) and vibrate to get user's attention
+    try {
+      // Haptic vibration (short burst)
+      HapticFeedback.vibrate();
+    } catch (e) {
+      print('Haptic feedback failed: $e');
+    }
+
+    // Play siren sound (non-blocking)
+    try {
+      final player = AudioPlayer();
+      player.setReleaseMode(ReleaseMode.stop);
+      player.play(AssetSource('assets/sounds/police-siren-397963.mp3'));
+    } catch (e) {
+      print('Failed to play siren: $e');
+    }
+
+    // Show an in-app alert dialog with sender details and live location
+    try {
+      NavigationService.showEmergencyDialog(alert);
+    } catch (e) {
+      print('Failed to show emergency dialog: $e');
+    }
+
+    // Also post a local notification so the alert reaches users when app is backgrounded
+    try {
+      NotificationService.showEmergencyNotification(alert);
+    } catch (e) {
+      print('Failed to show local notification: $e');
+    }
   }
 
   /// Handle safety updates

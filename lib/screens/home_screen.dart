@@ -85,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
+        if (!mounted) return;
         setState(() {
           _currentAddress = 'Location services disabled';
           _isLoadingAddress = false;
@@ -95,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
+          if (!mounted) return;
           setState(() {
             _currentAddress = 'Location permission denied';
             _isLoadingAddress = false;
@@ -103,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       }
       if (permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
         setState(() {
           _currentAddress = 'Location permission permanently denied';
           _isLoadingAddress = false;
@@ -125,11 +128,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           place.administrativeArea,
           place.country,
         ].where((e) => e != null && e.toString().isNotEmpty).join(', ');
+        if (!mounted) return;
         setState(() {
           _currentAddress = address.isNotEmpty ? address : 'Address not available';
           _isLoadingAddress = false;
         });
       } else {
+        if (!mounted) return;
         setState(() {
           _currentAddress = 'Address not found';
           _isLoadingAddress = false;
@@ -137,6 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     } catch (e) {
       print('Error fetching address: $e');
+      if (!mounted) return;
       setState(() {
         _currentAddress = 'Error fetching address';
         _isLoadingAddress = false;
@@ -154,6 +160,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // Try to get contacts from API first, then fallback to local database
       try {
         final apiContacts = await EmergencyContactService.getAllContacts();
+        if (!mounted) return;
         setState(() {
           _emergencyContactsCount = apiContacts.length;
           _isLoadingContacts = false;
@@ -162,6 +169,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         // Fallback to local database
         final dbService = OfflineDatabaseService.instance;
         final localContacts = await dbService.getCachedEmergencyContacts();
+        if (!mounted) return;
         setState(() {
           _emergencyContactsCount = localContacts.length;
           _isLoadingContacts = false;
@@ -169,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     } catch (e) {
       print('Error loading emergency contacts: $e');
+      if (!mounted) return;
       setState(() {
         _emergencyContactsCount = 0;
         _isLoadingContacts = false;

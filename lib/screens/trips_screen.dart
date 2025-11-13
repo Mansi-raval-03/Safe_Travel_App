@@ -15,6 +15,9 @@ class TripsScreen extends StatefulWidget {
 class _TripsScreenState extends State<TripsScreen> {
   final _titleController = TextEditingController();
   final _notesController = TextEditingController();
+  // Simple static suggestions; will be augmented from history later
+  final List<String> _staticSuggestions = ['Work', 'Home', 'Airport', 'Meeting', 'Hospital', 'School'];
+  List<String> _filteredSuggestions = [];
   DateTime? _start;
   DateTime? _end;
   double _destLat = 0.0;
@@ -33,6 +36,9 @@ class _TripsScreenState extends State<TripsScreen> {
   Future<void> _loadLocalTrips() async {
     final local = await TripService.getLocalTrips();
     setState(() => _trips = List<TripEvent>.from(local));
+    // Build suggestions from local history titles
+    final titles = _trips.map((t) => t.title).toList();
+    _filteredSuggestions = ([..._staticSuggestions, ...titles]).toSet().toList();
   }
 
   Future<void> _fetchFromServer() async {
@@ -96,6 +102,13 @@ class _TripsScreenState extends State<TripsScreen> {
     _titleController.clear();
     _notesController.clear();
     setState(() => _trips.add(trip));
+    // update suggestions
+    if (!_filteredSuggestions.contains(trip.title)) {
+      setState(() {
+        _filteredSuggestions.insert(0, trip.title);
+        if (_filteredSuggestions.length > 20) _filteredSuggestions = _filteredSuggestions.sublist(0, 20);
+      });
+    }
   }
 
   @override
@@ -107,7 +120,40 @@ class _TripsScreenState extends State<TripsScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Trip Title')),
+            // Title with simple suggestion chips
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: 'Trip Title'),
+              onChanged: (v) {
+                setState(() {
+                  // filter suggestions by prefix
+                  _filteredSuggestions = ([..._staticSuggestions, ..._trips.map((t)=>t.title)])
+                      .where((s) => s.toLowerCase().startsWith(v.toLowerCase())).toSet().toList();
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            if (_filteredSuggestions.isNotEmpty)
+              SizedBox(
+                height: 40,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemBuilder: (context, i) {
+                    final s = _filteredSuggestions[i];
+                    return ChoiceChip(
+                      label: Text(s),
+                      selected: false,
+                      onSelected: (_) {
+                        setState(() {
+                          _titleController.text = s;
+                        });
+                      },
+                    );
+                  },
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemCount: _filteredSuggestions.length,
+                ),
+              ),
             const SizedBox(height: 8),
             Row(children: [
               Expanded(child: ElevatedButton(onPressed: _pickStart, child: Text(_start == null ? 'Pick Start' : dateFmt.format(_start!)))),

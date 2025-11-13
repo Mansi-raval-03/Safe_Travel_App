@@ -8,6 +8,9 @@ import '../config/api_config.dart';
 
 class AuthService {
   static String get baseUrl => ApiConfig.currentBaseUrl;
+  // In-memory cached user to provide a synchronous accessor for callers
+  // that expect a quick current-user lookup (used by some UI components).
+  static User? _cachedUser;
   
   /// Sign up with email, password, name, and phone
   static Future<AuthResult> signup(String name, String email, String phone, String password) async {
@@ -102,7 +105,9 @@ class AuthService {
         );
 
         // Save token and user data
-        await _saveAuthData(token, user);
+  await _saveAuthData(token, user);
+  // keep in-memory cache in sync
+  _cachedUser = user;
 
         return AuthResult(
           success: true,
@@ -177,6 +182,14 @@ class AuthService {
       
       if (userJson != null) {
         final userData = json.decode(userJson);
+        final user = User(
+          id: userData['id'],
+          name: userData['name'],
+          email: userData['email'],
+          phone: userData['phone'],
+        );
+        // update in-memory cache
+        _cachedUser = user;
         return User(
           id: userData['id'],
           name: userData['name'],
@@ -263,6 +276,8 @@ class AuthService {
     
     // Save login timestamp for token expiry tracking
     await prefs.setInt('auth_timestamp', DateTime.now().millisecondsSinceEpoch);
+    // update in-memory cache for sync accessors
+    _cachedUser = user;
   }
 
   /// Clear all auth data
@@ -271,6 +286,14 @@ class AuthService {
     await prefs.remove('auth_token');
     await prefs.remove('current_user');
     await prefs.remove('auth_timestamp');
+    _cachedUser = null;
+  }
+
+  /// Synchronous accessor for current user from in-memory cache.
+  /// Returns null if no user is cached. This is intentionally lightweight
+  /// and does not perform I/O.
+  static User? getCurrentUserSync() {
+    return _cachedUser;
   }
 
   /// Check if token is expired (24 hours)

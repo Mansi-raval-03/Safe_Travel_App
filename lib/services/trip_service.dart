@@ -46,7 +46,8 @@ class TripService {
           'modeOfTravel': t.travelMode.apiValue,
         };
         final headers = authToken != null ? {'Authorization': 'Bearer $authToken'} : null;
-        final resp = await ApiService.post('/events/create', body, headers: headers);
+  // Persist trip history to backend trips API
+  final resp = await ApiService.post('/trips', body, headers: headers);
         if (resp.statusCode >= 200 && resp.statusCode < 300) {
           // successfully synced, skip adding to remaining
         } else {
@@ -67,7 +68,7 @@ class TripService {
   static Future<List<TripEvent>> fetchUserTrips(String userId, {String? authToken}) async {
     final headers = authToken != null ? {'Authorization': 'Bearer $authToken'} : null;
     try {
-      final resp = await ApiService.get('/events/user/$userId', headers: headers);
+  final resp = await ApiService.get('/trips/user/$userId', headers: headers);
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
         final data = jsonDecode(resp.body);
         final list = (data['data'] as List<dynamic>).map((e) => TripEvent.fromJson(e)).toList();
