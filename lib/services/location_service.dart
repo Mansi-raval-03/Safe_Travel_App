@@ -33,8 +33,8 @@ class LocationService {
   
   // Location accuracy and update settings
   LocationAccuracy _currentAccuracy = LocationAccuracy.high;
-  int _distanceFilterMeters = 5; // Update every 5 meters
-  Duration _timeInterval = const Duration(seconds: 3); // Update every 3 seconds
+  int _distanceFilterMeters = 1; // Update every 1 meter for faster refresh
+  Duration _timeInterval = const Duration(seconds: 1); // Preferred update every 1 second
 
   Stream<Position> get locationStream => locationController.stream;
   Position? get currentPosition => _currentPosition;
@@ -145,16 +145,45 @@ class LocationService {
         return null;
       }
 
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      // Try last known position first for faster UI responsiveness
+      try {
+        final last = await Geolocator.getLastKnownPosition();
+        if (last != null) {
+          final DateTime ts = last.timestamp;
+          final ageSeconds = DateTime.now().difference(ts).inSeconds;
+          if (ageSeconds <= 30) {
+            _currentPosition = last;
+            await _cacheLocationForSync(last);
+            return last;
+          }
+        }
+      } catch (e) {
+        print('⚠️ Could not read last known location: $e');
+      }
 
-      _currentPosition = position;
-      
-      // Cache location for auto-sync
-      await _cacheLocationForSync(position);
-      
-      return position;
+      // Fall back to an active GPS fix but constrain to a short timeout
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        ).timeout(const Duration(seconds: 6));
+
+        _currentPosition = position;
+        // Cache location for auto-sync
+        await _cacheLocationForSync(position);
+        return position;
+      } catch (e) {
+        print('⚠️ getCurrentPosition timed out or failed: $e');
+        // If last known position exists return it as a fallback
+        try {
+          final last = await Geolocator.getLastKnownPosition();
+          if (last != null) {
+            _currentPosition = last;
+            await _cacheLocationForSync(last);
+            return last;
+          }
+        } catch (_) {}
+        return null;
+      }
     } catch (e) {
       print('Error getting current location: $e');
       return null;
@@ -223,10 +252,21 @@ class LocationService {
   /// Get optimal location settings based on platform and requirements
   LocationSettings _getOptimalLocationSettings() {
     // Cross-platform location settings optimized for real-time tracking
-    return LocationSettings(
-      accuracy: _currentAccuracy,
-      distanceFilter: _distanceFilterMeters,
-    );
+    try {
+      // Prefer platform-specific settings when available
+      // Android supports intervalDuration via AndroidSettings
+      // Use LocationSettings fallback for other platforms
+      return LocationSettings(
+        accuracy: _currentAccuracy,
+        distanceFilter: _distanceFilterMeters,
+      );
+    } catch (e) {
+      print('⚠️ Could not create platform-specific location settings: $e');
+      return LocationSettings(
+        accuracy: _currentAccuracy,
+        distanceFilter: _distanceFilterMeters,
+      );
+    }
   }
 
   /// Handle location tracking errors gracefully

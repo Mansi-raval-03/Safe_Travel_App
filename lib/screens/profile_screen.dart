@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/responsive.dart';
 import '../models/user.dart';
 import '../widgets/bottom_navigation.dart';
 import '../services/emergency_contact_service.dart';
@@ -292,17 +293,17 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                     child: SingleChildScrollView(
                       physics: BouncingScrollPhysics(),
                       child: Padding(
-                        padding: EdgeInsets.all(20),
+                        padding: EdgeInsets.all(Responsive.s(context, 20)),
                         child: Column(
                           children: [
                             _buildProfileCard(),
-                            SizedBox(height: 20),
+                            SizedBox(height: Responsive.s(context, 20)),
                             _buildStatsCards(),
-                            SizedBox(height: 20),
+                            SizedBox(height: Responsive.s(context, 20)),
                             _buildEmergencyInfoCard(),
-                            SizedBox(height: 20),
+                            SizedBox(height: Responsive.s(context, 20)),
                             _buildQuickActionsGrid(),
-                            SizedBox(height: 100),
+                            SizedBox(height: Responsive.s(context, 100)),
                           ],
                         ),
                       ),
@@ -326,7 +327,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   // Modern Header with Gradient Background
   Widget _buildModernHeader() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      padding: EdgeInsets.symmetric(horizontal: Responsive.s(context, 20), vertical: Responsive.s(context, 15)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -345,7 +346,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                 'My Profile',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 24,
+                  fontSize: Responsive.s(context, 24),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -403,7 +404,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   // Modern Profile Card
   Widget _buildProfileCard() {
     return Container(
-      padding: EdgeInsets.all(24),
+      padding: EdgeInsets.all(Responsive.s(context, 24)),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -422,8 +423,8 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
             alignment: Alignment.center,
             children: [
               Container(
-                width: 100,
-                height: 100,
+                width: Responsive.s(context, 100),
+                height: Responsive.s(context, 100),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
@@ -431,7 +432,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                   ),
                 ),
                 child: CircleAvatar(
-                  radius: 48,
+                  radius: Responsive.s(context, 48),
                   backgroundColor: Colors.transparent,
                   backgroundImage: _profileImageUrl != null 
                       ? NetworkImage(_profileImageUrl!) 
@@ -445,7 +446,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                                 : 'U';
                           }(),
                           style: TextStyle(
-                            fontSize: 36,
+                            fontSize: Responsive.s(context, 36),
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -470,7 +471,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
               ),
             ],
           ),
-          SizedBox(height: 16),
+          SizedBox(height: Responsive.s(context, 16)),
           
           // User Name and Email
           if (_isEditing) ...[
@@ -483,22 +484,22 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
             Text(
               widget.user?.name ?? 'Unknown User',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: Responsive.s(context, 24),
                 fontWeight: FontWeight.bold,
                 color: Colors.grey.shade800,
               ),
             ),
-            SizedBox(height: 4),
+            SizedBox(height: Responsive.s(context, 4)),
             Text(
               widget.user?.email ?? 'No email provided',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: Responsive.s(context, 16),
                 color: Colors.grey.shade600,
               ),
             ),
-            SizedBox(height: 8),
+            SizedBox(height: Responsive.s(context, 8)),
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: EdgeInsets.symmetric(horizontal: Responsive.s(context, 12), vertical: Responsive.s(context, 6)),
               decoration: BoxDecoration(
                 color: _profileCompleteness > 80
                     ? Colors.green.withOpacity(0.1)
@@ -508,7 +509,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
               child: Text(
                 'Profile ${_profileCompleteness.toInt()}% Complete',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: Responsive.s(context, 12),
                   fontWeight: FontWeight.w600,
                   color: _profileCompleteness > 80 ? Colors.green : Colors.orange,
                 ),

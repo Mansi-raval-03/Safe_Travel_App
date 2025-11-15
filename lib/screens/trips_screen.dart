@@ -134,12 +134,12 @@ class _TripsScreenState extends State<TripsScreen> {
             ),
             const SizedBox(height: 8),
             if (_filteredSuggestions.isNotEmpty)
-              SizedBox(
-                height: 40,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemBuilder: (context, i) {
-                    final s = _filteredSuggestions[i];
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: _filteredSuggestions.map((s) {
                     return ChoiceChip(
                       label: Text(s),
                       selected: false,
@@ -149,9 +149,7 @@ class _TripsScreenState extends State<TripsScreen> {
                         });
                       },
                     );
-                  },
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemCount: _filteredSuggestions.length,
+                  }).toList(),
                 ),
               ),
             const SizedBox(height: 8),
@@ -179,10 +177,31 @@ class _TripsScreenState extends State<TripsScreen> {
                 itemBuilder: (context, idx) {
                   final t = _trips[idx];
                   return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
                     child: ListTile(
-                      title: Text(t.title),
-                      subtitle: Text('${dateFmt.format(t.startTime)} → ${dateFmt.format(t.endTime)}\nStatus: ${t.status.apiValue}'),
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.blueGrey.shade50,
+                        child: Text(
+                          t.title.isNotEmpty ? t.title[0].toUpperCase() : '?',
+                          style: const TextStyle(color: Colors.black87),
+                        ),
+                      ),
+                      title: Text(t.title, overflow: TextOverflow.ellipsis),
+                      subtitle: Text(
+                        '${dateFmt.format(t.startTime)} → ${dateFmt.format(t.endTime)}\nStatus: ${t.status.apiValue}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       isThreeLine: true,
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (v) {
+                          // placeholder for future actions (edit/delete/share)
+                        },
+                        itemBuilder: (ctx) => [
+                          const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        ],
+                      ),
                     ),
                   );
                 },

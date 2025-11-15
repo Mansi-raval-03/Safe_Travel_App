@@ -28,7 +28,8 @@ android {
         applicationId = "com.example.safe_travel_app"
     // You can update the following values to match your application needs.
     // For more information, see: https://flutter.dev/to/review-gradle-config.
-    minSdk = flutter.minSdkVersion
+    // another_telephony requires minSdk 23; set explicitly to satisfy plugin
+    minSdk = 23
     // Use explicit targetSdk to ensure the Android plugins compile against a compatible SDK
     targetSdk = 35
         versionCode = flutter.versionCode
@@ -52,4 +53,12 @@ flutter {
 dependencies {
     // Use a recent desugar_jdk_libs release compatible with Android Gradle Plugin.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+// Conditionally apply Google Services plugin if google-services.json is present
+val googleServicesJson = file("${project.projectDir}/google-services.json")
+if (googleServicesJson.exists()) {
+    logger.lifecycle("Applying Google Services plugin (google-services.json found)")
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.lifecycle("Skipping Google Services plugin (google-services.json not found)")
 }

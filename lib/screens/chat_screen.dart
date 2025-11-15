@@ -19,8 +19,16 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    final user = AuthService.getCurrentUserSync();
-    _currentUserId = user?.id ?? '';
+    _currentUserId = '';
+    _initCurrentUser();
+  }
+
+  Future<void> _initCurrentUser() async {
+    final user = await AuthService.getCurrentUser();
+    if (!mounted) return;
+    setState(() {
+      _currentUserId = user?.id ?? '';
+    });
   }
 
   @override

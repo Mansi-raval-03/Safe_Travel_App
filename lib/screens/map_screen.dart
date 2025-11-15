@@ -7,6 +7,7 @@ import '../services/socket_service.dart';
 import '../services/sos_emergency_service.dart';
 import '../services/emergency_contact_service.dart';
 import '../services/enhanced_sos_service.dart';
+import '../services/direct_sos_service.dart';
 import '../services/emergency_location_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
@@ -55,6 +56,8 @@ class _MapScreenState extends State<MapScreen> {
   // SOS emergency state
   bool _isSOSActive = false;
   int _emergencyContactsCount = 0;
+  bool _isDirectSOSLoading = false;
+  final DirectSOSService _directSOSService = DirectSOSService.instance;
   
   // Emergency services state
   List<Map<String, dynamic>> _nearbyServices = [];
@@ -63,6 +66,126 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _initializeServices();
+  }
+
+  /// Show error details dialog (used for SOS send errors)
+  void _showErrorDetails(List<String> errors) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Message Errors'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: errors.map((error) => 
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text('• $error', style: const TextStyle(fontSize: 14)),
+            )
+          ).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Send direct one-tap SOS using shared DirectSOSService
+  Future<void> _sendDirectSOSFromMap() async {
+    try {
+      setState(() {
+        _isDirectSOSLoading = true;
+        _isSOSActive = true;
+      });
+
+      final result = await _directSOSService.sendOneClickSOS();
+
+      if (mounted) {
+        if (result['success'] == true) {
+          // Show success dialog similar to EmergencyScreen
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              icon: Icon(
+                Icons.check_circle,
+                color: _directSOSService.isOfflineMode ? Colors.orange : Colors.green,
+                size: 48,
+              ),
+              title: Text(_directSOSService.isOfflineMode ? 'SOS Sent (Offline Mode)' : 'SOS Alert Sent'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Emergency alert sent'),
+                  SizedBox(height: 8),
+                  if (result['smsCount'] != null && result['smsCount'] > 0)
+                    Text('📱 SMS: ${result['smsCount']} sent', style: TextStyle(color: Colors.green)),
+                  if (result['whatsappCount'] != null && result['whatsappCount'] > 0)
+                    Text('💬 WhatsApp: ${result['whatsappCount']} sent', style: TextStyle(color: Colors.green)),
+                  if (_directSOSService.isOfflineMode)
+                    const Text('\n📵 Sent in offline mode - Messages may have delays', style: TextStyle(color: Colors.orange, fontSize: 12)),
+                  if (result['errors'] != null && (result['errors'] as List).isNotEmpty)
+                    Text('\n⚠️ Some messages failed to send', style: TextStyle(color: Colors.red, fontSize: 12)),
+                ],
+              ),
+              actions: [
+                if (result['errors'] != null && (result['errors'] as List).isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _showErrorDetails(result['errors'] as List<String>);
+                    },
+                    child: const Text('View Errors'),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to send SOS alert: ${result['error'] ?? 'Unknown error'}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: _sendDirectSOSFromMap,
+              ),
+            ),
+          );
+        }
+      }
+
+      // Reset active state after 30s
+      Future.delayed(const Duration(seconds: 30), () {
+        if (mounted) {
+          setState(() {
+            _isSOSActive = false;
+          });
+        }
+      });
+    } catch (e) {
+      print('❌ Error sending direct SOS from map: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error sending SOS: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDirectSOSLoading = false;
+        });
+      }
+    }
   }
   
   Future<void> _initializeServices() async {
@@ -1013,6 +1136,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
 
   @override
   Widget build(BuildContext context) {
+    final double _rs = (MediaQuery.of(context).size.width / 375.0).clamp(0.75, 1.6);
     return Scaffold(
       body: Column(
         children: [
@@ -1021,7 +1145,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
           Container(
             color: Colors.white,
             child: Padding(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.all(16 * _rs),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1031,24 +1155,24 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                         onPressed: () => widget.onNavigate(2), // Home screen
                         icon: Icon(Icons.arrow_back),
                         style: IconButton.styleFrom(
-                          padding: EdgeInsets.all(4),
+                          padding: EdgeInsets.all(4 * _rs),
                         ),
                       ),
-                      SizedBox(width: 8),
+                      SizedBox(width: 8 * _rs),
                       Text(
                         'Map & Services',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 18 * _rs,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                   ElevatedButton(
-                    onPressed: _handleSOSWithLocation,
+                    onPressed: _isDirectSOSLoading ? null : _sendDirectSOSFromMap,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFFEF4444),
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: EdgeInsets.symmetric(horizontal: 12 * _rs, vertical: 4 * _rs),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -1056,13 +1180,13 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.shield, size: 16, color: Colors.white),
-                        SizedBox(width: 4),
+                        Icon(Icons.shield, size: 16 * _rs, color: Colors.white),
+                        SizedBox(width: 4 * _rs),
                         Text(
                           _isSocketConnected ? 'SOS' : 'SOS (Offline)',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 12 * _rs,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1079,7 +1203,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
             child: Container(
               color: Colors.grey.shade50,
               child: SingleChildScrollView(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(16 * _rs),
                 child: Column(
                   children: [
                     // Search Bar
@@ -1087,16 +1211,16 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300, width: 2),
+                        border: Border.all(color: Colors.grey.shade300, width: 2 * _rs),
                       ),
                       child: Row(
                         children: [
                           Padding(
-                            padding: EdgeInsets.only(left: 12),
+                            padding: EdgeInsets.only(left: 12 * _rs),
                             child: Icon(
                               Icons.search,
                               color: Colors.grey.shade400,
-                              size: 20,
+                              size: 20 * _rs,
                             ),
                           ),
                           Expanded(
@@ -1105,18 +1229,18 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                               decoration: InputDecoration(
                                 hintText: 'Search destination...',
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12 * _rs, vertical: 16 * _rs),
                               ),
                             ),
                           ),
                           if (_destinationController.text.isNotEmpty)
                             Padding(
-                              padding: EdgeInsets.only(right: 8),
+                              padding: EdgeInsets.only(right: 8 * _rs),
                               child: ElevatedButton(
                                 onPressed: _routeActive ? _handleStopNavigation : _handleStartNavigation,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _routeActive ? Color(0xFFEF4444) : Color(0xFF3B82F6),
-                                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  padding: EdgeInsets.symmetric(horizontal: 16 * _rs, vertical: 8 * _rs),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -1125,7 +1249,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                   _routeActive ? 'Stop' : 'Go',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 12,
+                                    fontSize: 12 * _rs,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -1135,7 +1259,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                       ),
                     ),
 
-                    SizedBox(height: 16),
+                    SizedBox(height: 16 * _rs),
 
                     // Active Route Banner
                     if (_routeActive)
@@ -1153,18 +1277,18 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.route, size: 16, color: Color(0xFF3B82F6)),
-                                SizedBox(width: 8),
+                                Icon(Icons.route, size: 16 * _rs, color: Color(0xFF3B82F6)),
+                                SizedBox(width: 8 * _rs),
                                 Text(
                                   'Active Route',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 14 * _rs,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                SizedBox(width: 8),
+                                SizedBox(width: 8 * _rs),
                                 Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: EdgeInsets.symmetric(horizontal: 6 * _rs, vertical: 2 * _rs),
                                   decoration: BoxDecoration(
                                     color: Color(0xFF10B981),
                                     borderRadius: BorderRadius.circular(8),
@@ -1173,44 +1297,44 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                     'Safest',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 10,
+                                      fontSize: 10 * _rs,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
-                            SizedBox(height: 8),
+                            SizedBox(height: 8 * _rs),
                             Text(
                               'To: ${_destinationController.text}',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 14 * _rs,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            SizedBox(height: 8),
+                            SizedBox(height: 8 * _rs),
                             Row(
                               children: [
                                 Text(
                                   '12.5 km',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 12 * _rs,
                                     color: Colors.grey.shade600,
                                   ),
                                 ),
-                                SizedBox(width: 16),
+                                SizedBox(width: 16 * _rs),
                                 Text(
                                   '18 min',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 12 * _rs,
                                     color: Colors.grey.shade600,
                                   ),
                                 ),
-                                SizedBox(width: 16),
+                                SizedBox(width: 16 * _rs),
                                 Text(
                                   'Light traffic',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 12 * _rs,
                                     color: Colors.grey.shade600,
                                   ),
                                 ),
@@ -1220,11 +1344,11 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                         ),
                       ),
 
-                    if (_routeActive) SizedBox(height: 16),
+                    if (_routeActive) SizedBox(height: 16 * _rs),
 
                     // Map
                     Container(
-                      height: 200,
+                      height: 220 * _rs,
                       decoration: BoxDecoration(
                         color: Colors.grey.shade200,
                         borderRadius: BorderRadius.circular(16),
@@ -1278,21 +1402,21 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                       children: [
                                         Icon(
                                           Icons.location_searching,
-                                          size: 48,
+                                          size: 48 * _rs,
                                           color: Colors.grey.shade600,
                                         ),
-                                        SizedBox(height: 12),
+                                        SizedBox(height: 12 * _rs),
                                         Text(
                                           _isLocationServiceInitialized
                                               ? 'Loading Map...'
                                               : 'Getting Location...',
                                           style: TextStyle(
                                             color: Colors.grey.shade600,
-                                            fontSize: 16,
+                                            fontSize: 16 * _rs,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
-                                        SizedBox(height: 16),
+                                        SizedBox(height: 16 * _rs),
                                         ElevatedButton.icon(
                                           onPressed: () async {
                                             await _initLocationService();
@@ -1314,7 +1438,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                             top: 12,
                             left: 12,
                             child: Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: EdgeInsets.symmetric(horizontal: 8 * _rs, vertical: 4 * _rs),
                               decoration: BoxDecoration(
                                 color: _isLocationServiceInitialized ? Colors.green : Colors.grey,
                                 borderRadius: BorderRadius.circular(12),
@@ -1326,16 +1450,16 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                     _isLocationServiceInitialized 
                                       ? Icons.location_on 
                                       : Icons.location_off, 
-                                    size: 12, 
+                                    size: 12 * _rs, 
                                     color: Colors.white,
                                   ),
-                                  SizedBox(width: 4),
+                                  SizedBox(width: 4 * _rs),
                                   Text(
                                     _isLocationServiceInitialized 
                                       ? 'Live Location'
                                       : 'Location Off',
                                     style: TextStyle(
-                                      fontSize: 10,
+                                      fontSize: 10 * _rs,
                                       fontWeight: FontWeight.w500,
                                       color: Colors.white,
                                     ),
@@ -1350,7 +1474,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                             top: 12,
                             right: _routeActive ? 130 : 12,
                             child: Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: EdgeInsets.symmetric(horizontal: 8 * _rs, vertical: 4 * _rs),
                               decoration: BoxDecoration(
                                 color: _isSocketConnected ? Colors.blue : Colors.orange,
                                 borderRadius: BorderRadius.circular(12),
@@ -1362,14 +1486,14 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                     _isSocketConnected 
                                       ? Icons.wifi 
                                       : Icons.wifi_off, 
-                                    size: 12, 
+                                    size: 12 * _rs, 
                                     color: Colors.white,
                                   ),
-                                  SizedBox(width: 4),
+                                  SizedBox(width: 4 * _rs),
                                   Text(
                                     _isSocketConnected ? 'Connected' : 'Offline',
                                     style: TextStyle(
-                                      fontSize: 10,
+                                      fontSize: 10 * _rs,
                                       fontWeight: FontWeight.w500,
                                       color: Colors.white,
                                     ),
@@ -1385,7 +1509,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                               top: 12,
                               right: 12,
                               child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: EdgeInsets.symmetric(horizontal: 8 * _rs, vertical: 4 * _rs),
                                 decoration: BoxDecoration(
                                   color: Color(0xFF3B82F6),
                                   borderRadius: BorderRadius.circular(12),
@@ -1393,12 +1517,12 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.navigation, size: 12, color: Colors.white),
-                                    SizedBox(width: 4),
+                                    Icon(Icons.navigation, size: 12 * _rs, color: Colors.white),
+                                    SizedBox(width: 4 * _rs),
                                     Text(
                                       'Navigating',
                                       style: TextStyle(
-                                        fontSize: 10,
+                                        fontSize: 10 * _rs,
                                         fontWeight: FontWeight.w500,
                                         color: Colors.white,
                                       ),
@@ -1414,7 +1538,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                               bottom: 12,
                               left: 12,
                               child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: EdgeInsets.symmetric(horizontal: 8 * _rs, vertical: 4 * _rs),
                                 decoration: BoxDecoration(
                                   color: Colors.red,
                                   borderRadius: BorderRadius.circular(12),
@@ -1422,12 +1546,12 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.emergency, size: 12, color: Colors.white),
-                                    SizedBox(width: 4),
+                                    Icon(Icons.emergency, size: 12 * _rs, color: Colors.white),
+                                    SizedBox(width: 4 * _rs),
                                     Text(
                                       'SOS ACTIVE',
                                       style: TextStyle(
-                                        fontSize: 10,
+                                        fontSize: 10 * _rs,
                                         fontWeight: FontWeight.w500,
                                         color: Colors.white,
                                       ),
@@ -1440,11 +1564,11 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                       ),
                     ),
 
-                    SizedBox(height: 16),
+                    SizedBox(height: 16 * _rs),
 
                     // Traffic Alert
                     Container(
-                      padding: EdgeInsets.all(12),
+                      padding: EdgeInsets.all(12 * _rs),
                       decoration: BoxDecoration(
                         color: Colors.orange.shade50,
                         border: Border.all(color: Colors.orange.shade200),
@@ -1455,9 +1579,9 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                           Icon(
                             Icons.warning,
                             color: Colors.orange.shade600,
-                            size: 16,
+                            size: 16 * _rs,
                           ),
-                          SizedBox(width: 12),
+                          SizedBox(width: 12 * _rs),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1465,7 +1589,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                 Text(
                                   'Traffic Alert',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 14 * _rs,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.orange.shade800,
                                   ),
@@ -1473,7 +1597,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                 Text(
                                   'Minor congestion ahead. Alternative route suggested.',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 12 * _rs,
                                     color: Colors.orange.shade700,
                                   ),
                                 ),
@@ -1500,23 +1624,23 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                         ],
                       ),
                       child: Padding(
-                        padding: EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16 * _rs),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Emergency Services',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 16 * _rs,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            SizedBox(height: 12),
+                            SizedBox(height: 12 * _rs),
                             Column(
                               children: _nearbyServices.map((service) {
                                 return Container(
-                                  margin: EdgeInsets.only(bottom: 12),
-                                  padding: EdgeInsets.all(12),
+                                  margin: EdgeInsets.only(bottom: 12 * _rs),
+                                  padding: EdgeInsets.all(12 * _rs),
                                   decoration: BoxDecoration(
                                     color: Colors.grey.shade50,
                                     borderRadius: BorderRadius.circular(12),
@@ -1525,19 +1649,19 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                   child: Row(
                                     children: [
                                       Container(
-                                        width: 32,
-                                        height: 32,
+                                        width: 32 * _rs,
+                                        height: 32 * _rs,
                                         decoration: BoxDecoration(
                                           color: Colors.white,
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Icon(
                                           service['icon'] as IconData,
-                                          size: 16,
+                                          size: 16 * _rs,
                                           color: service['color'] as Color,
                                         ),
                                       ),
-                                      SizedBox(width: 12),
+                                      SizedBox(width: 12 * _rs),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1545,21 +1669,21 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                             Text(
                                               service['name'] as String,
                                               style: TextStyle(
-                                                fontSize: 14,
+                                                fontSize: 14 * _rs,
                                                 fontWeight: FontWeight.w500,
                                               ),
                                             ),
                                             Text(
                                               '${service['distance']} • ${service['time']}',
                                               style: TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 12 * _rs,
                                                 color: Colors.grey.shade600,
                                               ),
                                             ),
                                             Text(
                                               service['address'] as String,
                                               style: TextStyle(
-                                                fontSize: 11,
+                                                fontSize: 11 * _rs,
                                                 color: Colors.grey.shade500,
                                               ),
                                               maxLines: 1,
@@ -1576,7 +1700,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                               service['name'] as String,
                                             ),
                                             style: OutlinedButton.styleFrom(
-                                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                              padding: EdgeInsets.symmetric(horizontal: 12 * _rs, vertical: 4 * _rs),
                                               side: BorderSide(color: Colors.grey.shade300),
                                             ),
                                             child: Row(
@@ -1584,21 +1708,21 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                               children: [
                                                 Icon(
                                                   Icons.phone,
-                                                  size: 14,
+                                                  size: 14 * _rs,
                                                   color: Colors.grey.shade700,
                                                 ),
-                                                SizedBox(width: 4),
+                                                SizedBox(width: 4 * _rs),
                                                 Text(
                                                   'Call',
                                                   style: TextStyle(
-                                                    fontSize: 12,
+                                                    fontSize: 12 * _rs,
                                                     color: Colors.grey.shade700,
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                          SizedBox(width: 8),
+                                          SizedBox(width: 8 * _rs),
                                           ElevatedButton(
                                             onPressed: () => _handleGoToService(
                                               service['latitude'] as double,
@@ -1607,21 +1731,21 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                             ),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: Color(0xFF3B82F6),
-                                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                              padding: EdgeInsets.symmetric(horizontal: 12 * _rs, vertical: 4 * _rs),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
                                                   Icons.navigation,
-                                                  size: 14,
+                                                  size: 14 * _rs,
                                                   color: Colors.white,
                                                 ),
-                                                SizedBox(width: 4),
+                                                SizedBox(width: 4 * _rs),
                                                 Text(
                                                   'Go',
                                                   style: TextStyle(
-                                                    fontSize: 12,
+                                                    fontSize: 12 * _rs,
                                                     color: Colors.white,
                                                     fontWeight: FontWeight.w600,
                                                   ),
@@ -1657,7 +1781,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                         ],
                       ),
                       child: Padding(
-                        padding: EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16 * _rs),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -1665,20 +1789,20 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                               children: [
                                 Icon(
                                   Icons.shield_outlined,
-                                  size: 20,
+                                  size: 20 * _rs,
                                   color: Color(0xFFEC4899),
                                 ),
-                                SizedBox(width: 8),
+                                SizedBox(width: 8 * _rs),
                                 Text(
                                   'Women & Children Safety',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 16 * _rs,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
                             ),
-                            SizedBox(height: 12),
+                            SizedBox(height: 12 * _rs),
                             
                             // Women Helpline
                             _buildHelplineCard(
@@ -1688,7 +1812,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                               number: '1091',
                               description: '24/7 Emergency helpline for women in distress',
                             ),
-                            SizedBox(height: 8),
+                            SizedBox(height: 8 * _rs),
                             
                             // Child Helpline
                             _buildHelplineCard(
@@ -1698,7 +1822,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                               number: '1098',
                               description: '24/7 Emergency helpline for children in need',
                             ),
-                            SizedBox(height: 8),
+                            SizedBox(height: 8 * _rs),
                             
                             // National Commission for Women
                             _buildHelplineCard(
@@ -1708,7 +1832,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                               number: '7827-170-170',
                               description: 'National Commission for Women',
                             ),
-                            SizedBox(height: 8),
+                            SizedBox(height: 8 * _rs),
                             
                             // Cyber Crime Helpline
                             _buildHelplineCard(
@@ -1718,11 +1842,11 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                               number: '1930',
                               description: 'Report cyber crimes and harassment',
                             ),
-                            SizedBox(height: 12),
+                            SizedBox(height: 12 * _rs),
                             
                             // Info banner
                             Container(
-                              padding: EdgeInsets.all(10),
+                              padding: EdgeInsets.all(10 * _rs),
                               decoration: BoxDecoration(
                                 color: Colors.pink.shade50,
                                 borderRadius: BorderRadius.circular(8),
@@ -1730,13 +1854,13 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.info_outline, size: 16, color: Colors.pink.shade700),
-                                  SizedBox(width: 8),
+                                  Icon(Icons.info_outline, size: 16 * _rs, color: Colors.pink.shade700),
+                                  SizedBox(width: 8 * _rs),
                                   Expanded(
                                     child: Text(
                                       'All helplines are toll-free and available 24/7',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 12 * _rs,
                                         color: Colors.pink.shade700,
                                       ),
                                     ),
@@ -1765,7 +1889,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                         ],
                       ),
                       child: Padding(
-                        padding: EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16 * _rs),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -1773,21 +1897,21 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                               children: [
                                 Icon(
                                   Icons.emergency,
-                                  size: 20,
+                                  size: 20 * _rs,
                                   color: Colors.red,
                                 ),
-                                SizedBox(width: 8),
+                                SizedBox(width: 8 * _rs),
                                 Text(
                                   'Emergency SOS',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 16 * _rs,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 Spacer(),
                                 if (_isSOSActive)
                                   Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: EdgeInsets.symmetric(horizontal: 8 * _rs, vertical: 4 * _rs),
                                     decoration: BoxDecoration(
                                       color: Colors.red.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
@@ -1797,18 +1921,18 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Container(
-                                          width: 6,
-                                          height: 6,
+                                          width: 6 * _rs,
+                                          height: 6 * _rs,
                                           decoration: BoxDecoration(
                                             color: Colors.red,
                                             shape: BoxShape.circle,
                                           ),
                                         ),
-                                        SizedBox(width: 6),
+                                        SizedBox(width: 6 * _rs),
                                         Text(
                                           'ALERT SENT',
                                           style: TextStyle(
-                                            fontSize: 10,
+                                            fontSize: 10 * _rs,
                                             fontWeight: FontWeight.w600,
                                             color: Colors.red,
                                           ),
@@ -1818,11 +1942,11 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                   ),
                               ],
                             ),
-                            SizedBox(height: 12),
+                            SizedBox(height: 12 * _rs),
                             
                             // Emergency Contact Information
                             Container(
-                              padding: EdgeInsets.all(12),
+                              padding: EdgeInsets.all(12 * _rs),
                               decoration: BoxDecoration(
                                 color: Colors.red.shade50,
                                 borderRadius: BorderRadius.circular(12),
@@ -1833,13 +1957,13 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(Icons.contacts, size: 16, color: Colors.red.shade700),
-                                      SizedBox(width: 8),
+                                      Icon(Icons.contacts, size: 16 * _rs, color: Colors.red.shade700),
+                                      SizedBox(width: 8 * _rs),
                                       Expanded(
                                         child: Text(
                                           'Emergency Contacts: $_emergencyContactsCount',
                                           style: TextStyle(
-                                            fontSize: 14,
+                                            fontSize: 14 * _rs,
                                             fontWeight: FontWeight.w500,
                                             color: _emergencyContactsCount > 0 ? Colors.red.shade800 : Colors.red.shade600,
                                           ),
@@ -1854,9 +1978,9 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                               await _debugEmergencyContactsAPI();
                                               await _initSOSEmergencyService();
                                             },
-                                            icon: Icon(Icons.refresh, size: 18, color: Colors.red.shade700),
+                                            icon: Icon(Icons.refresh, size: 18 * _rs, color: Colors.red.shade700),
                                             padding: EdgeInsets.zero,
-                                            constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                                            constraints: BoxConstraints(minWidth: 32 * _rs, minHeight: 32 * _rs),
                                             tooltip: 'Refresh emergency contacts',
                                           ),
                                          
@@ -1883,29 +2007,29 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                                   );
                                                 }
                                               },
-                                              icon: Icon(Icons.add, size: 18, color: Colors.green.shade700),
+                                              icon: Icon(Icons.add, size: 18 * _rs, color: Colors.green.shade700),
                                               padding: EdgeInsets.zero,
-                                              constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                                              constraints: BoxConstraints(minWidth: 32 * _rs, minHeight: 32 * _rs),
                                               tooltip: 'Add test emergency contact',
                                             ),
                                         ],
                                       ),
                                     ],
                                   ),
-                                  SizedBox(height: 8),
+                                  SizedBox(height: 8 * _rs),
                                   Text(
                                     _emergencyContactsCount > 0
                                         ? 'Tap SOS to instantly send your live location via SMS and WhatsApp to all emergency contacts.'
                                         : 'Add emergency contacts to enable SOS alerts.',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 12 * _rs,
                                       color: Colors.red.shade700,
                                     ), 
                                   ),
                                 ],
                               ),
                             ),
-                            SizedBox(height: 12),
+                            SizedBox(height: 12 * _rs),
                             
                             // SOS Action Button
                             Row(
@@ -1915,15 +2039,15 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                     onPressed: (_isLocationServiceInitialized && _emergencyContactsCount > 0) 
                                         ? _showSOSConfirmationDialog 
                                         : null,
-                                    icon: Icon(Icons.warning, size: 20),
+                                    icon: Icon(Icons.warning, size: 20 * _rs),
                                     label: Text(
                                       '🚨 Send SOS Alert',
-                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                      style: TextStyle(fontSize: 16 * _rs, fontWeight: FontWeight.bold),
                                     ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.red,
                                       foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      padding: EdgeInsets.symmetric(vertical: 16 * _rs),
                                       disabledBackgroundColor: Colors.grey.shade300,
                                       elevation: 3,
                                     ),
@@ -1934,13 +2058,13 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                             
                             if (!_isLocationServiceInitialized || _emergencyContactsCount == 0)
                               Padding(
-                                padding: EdgeInsets.only(top: 8),
+                                padding: EdgeInsets.only(top: 8 * _rs),
                                 child: Text(
                                   !_isLocationServiceInitialized
                                       ? 'Location service must be enabled for SOS alerts'
                                       : 'Add emergency contacts to enable SOS alerts',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 12 * _rs,
                                     color: Colors.grey.shade500,
                                   ),
                                 ),
@@ -1967,7 +2091,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                           ],
                         ),
                         child: Padding(
-                          padding: EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16 * _rs),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1976,24 +2100,24 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                   Icon(
                                     Icons.people,
                                     color: Color(0xFF3B82F6),
-                                    size: 18,
+                                    size: 18 * _rs,
                                   ),
-                                  SizedBox(width: 8),
+                                  SizedBox(width: 8 * _rs),
                                   Text(
                                     'Nearby Travelers (${_nearbyUsers.length})',
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 16 * _rs,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 12),
+                              SizedBox(height: 12 * _rs),
                               Column(
                                 children: _nearbyUsers.take(5).map((user) {
                                   return Container(
-                                    margin: EdgeInsets.only(bottom: 8),
-                                    padding: EdgeInsets.all(12),
+                                    margin: EdgeInsets.only(bottom: 8 * _rs),
+                                    padding: EdgeInsets.all(12 * _rs),
                                     decoration: BoxDecoration(
                                       color: Colors.grey.shade50,
                                       borderRadius: BorderRadius.circular(12),
@@ -2002,19 +2126,19 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                     child: Row(
                                       children: [
                                         Container(
-                                          width: 32,
-                                          height: 32,
+                                          width: 32 * _rs,
+                                          height: 32 * _rs,
                                           decoration: BoxDecoration(
                                             color: _getUserStatusColor(user['status'] ?? 'safe'),
                                             borderRadius: BorderRadius.circular(16),
                                           ),
                                           child: Icon(
                                             _getUserStatusIcon(user['status'] ?? 'safe'),
-                                            size: 16,
+                                            size: 16 * _rs,
                                             color: Colors.white,
                                           ),
                                         ),
-                                        SizedBox(width: 12),
+                                        SizedBox(width: 12 * _rs),
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2022,14 +2146,14 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                               Text(
                                                 user['userName'] ?? 'Anonymous User',
                                                 style: TextStyle(
-                                                  fontSize: 14,
+                                                  fontSize: 14 * _rs,
                                                   fontWeight: FontWeight.w500,
                                                 ),
                                               ),
                                               Text(
                                                 '${(user['distance'] ?? 0).toStringAsFixed(1)} km away • ${_getStatusText(user['status'] ?? 'safe')}',
                                                 style: TextStyle(
-                                                  fontSize: 12,
+                                                  fontSize: 12 * _rs,
                                                   color: Colors.grey.shade600,
                                                 ),
                                               ),
@@ -2041,12 +2165,12 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                             onPressed: () => _offerHelp(user),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: Colors.orange,
-                                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                              padding: EdgeInsets.symmetric(horizontal: 12 * _rs, vertical: 4 * _rs),
                                             ),
                                             child: Text(
                                               'Help',
                                               style: TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 12 * _rs,
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.w600,
                                               ),
@@ -2065,8 +2189,8 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                     // Connection status info
                     if (!_isSocketConnected)
                       Container(
-                        margin: EdgeInsets.only(top: 16),
-                        padding: EdgeInsets.all(12),
+                        margin: EdgeInsets.only(top: 16 * _rs),
+                        padding: EdgeInsets.all(12 * _rs),
                         decoration: BoxDecoration(
                           color: Colors.orange.shade50,
                           border: Border.all(color: Colors.orange.shade200),
@@ -2077,9 +2201,9 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                             Icon(
                               Icons.wifi_off,
                               color: Colors.orange.shade600,
-                              size: 16,
+                              size: 16 * _rs,
                             ),
-                            SizedBox(width: 12),
+                            SizedBox(width: 12 * _rs),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2087,7 +2211,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                   Text(
                                     'Offline Mode',
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 14 * _rs,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.orange.shade800,
                                     ),
@@ -2095,7 +2219,7 @@ This is an automated emergency message from Safe Travel App. Please respond imme
                                   Text(
                                     'Live tracking is unavailable. Location sharing will resume when connected.',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 12 * _rs,
                                       color: Colors.orange.shade700,
                                     ),
                                   ),

@@ -64,6 +64,13 @@
             android:name="com.dexterous.flutterlocalnotifications.ForegroundService"
             android:exported="false"
             android:stopWithTask="false" />
+
+                <!--
+                    Firebase / FCM notes:
+                    - Place your `google-services.json` in `android/app/` (not checked into VCS if it contains secrets).
+                    - The Google Services Gradle plugin will read that file and configure FCM.
+                    - No additional manifest changes are required for basic FCM; background handler is registered in Dart.
+                -->
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

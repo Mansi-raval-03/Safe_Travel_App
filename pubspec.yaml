@@ -46,6 +46,7 @@ dependencies:
   shared_preferences: ^2.3.2
   connectivity_plus: ^6.1.0
   path: ^1.8.3
+  path_provider: ^2.0.14
   # Auto-sync location dependencies
   workmanager: ^0.9.0
   # Real-time location tracking dependencies  
@@ -63,6 +64,9 @@ dependencies:
   basic_utils: ^5.7.0
   flutter_secure_storage: ^8.0.0
   flutter_local_notifications: ^19.5.0
+  firebase_core: ^2.13.0
+  firebase_messaging: ^14.4.0
+  another_telephony: ^0.4.1
 
   flutter_native_splash: any
 dev_dependencies:

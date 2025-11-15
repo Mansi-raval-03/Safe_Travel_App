@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/responsive.dart';
 import '../services/fake_call_service.dart';
 import '../services/emergency_siren_service.dart';
 import 'fake_call_screen.dart';
@@ -101,19 +102,19 @@ class _SigninScreenState extends State<SigninScreen> {
       backgroundColor: const Color(0xFFF8FAFB),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: EdgeInsets.all(Responsive.s(context, 24)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 40),
+              SizedBox(height: Responsive.s(context, 40)),
               _buildHeader(),
-              const SizedBox(height: 48),
+              SizedBox(height: Responsive.s(context, 48)),
               _buildForm(),
-              const SizedBox(height: 32),
+              SizedBox(height: Responsive.s(context, 32)),
               if (widget.errorMessage != null && widget.errorMessage!.isNotEmpty)
                 Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(12),
+                  margin: EdgeInsets.only(bottom: Responsive.s(context, 16)),
+                  padding: EdgeInsets.all(Responsive.s(context, 12)),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFEF2F2),
                     borderRadius: BorderRadius.circular(8),
@@ -126,13 +127,13 @@ class _SigninScreenState extends State<SigninScreen> {
                         color: Color(0xFFFF6B6B),
                         size: 20,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: Responsive.s(context, 8)),
                       Expanded(
                         child: Text(
                           widget.errorMessage!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Color(0xFFFF6B6B),
-                            fontSize: 14,
+                            fontSize: Responsive.s(context, 14),
                           ),
                         ),
                       ),
@@ -140,9 +141,9 @@ class _SigninScreenState extends State<SigninScreen> {
                   ),
                 ),
               _buildSignInButton(),
-              const SizedBox(height: 24),
+              SizedBox(height: Responsive.s(context, 24)),
               _buildEmergencyButtons(),
-              const SizedBox(height: 32),
+              SizedBox(height: Responsive.s(context, 32)),
               _buildSignUpLink(),
             ],
           ),
@@ -155,8 +156,8 @@ class _SigninScreenState extends State<SigninScreen> {
     return Column(
       children: [
         Container(
-          width: 80,
-          height: 80,
+          width: Responsive.s(context, 80),
+          height: Responsive.s(context, 80),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
@@ -173,28 +174,28 @@ class _SigninScreenState extends State<SigninScreen> {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: const Icon(
-            Icons.security_outlined,
-            color: Colors.white,
-            size: 40,
+            padding: EdgeInsets.all(Responsive.s(context, 16)),
+            child: Icon(
+              Icons.security_outlined,
+              color: Colors.white,
+              size: Responsive.s(context, 40),
+            ),
           ),
         ),
-        ),
-        const SizedBox(height: 24),
-        const Text(
+        SizedBox(height: Responsive.s(context, 24)),
+        Text(
           'Welcome Back',
           style: TextStyle(
-            fontSize: 32,
+            fontSize: Responsive.s(context, 32),
             fontWeight: FontWeight.bold,
             color: Color(0xFF1E293B),
           ),
         ),
-        const SizedBox(height: 8),
-        const Text(
+        SizedBox(height: Responsive.s(context, 8)),
+        Text(
           'Sign in to your account to continue',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: Responsive.s(context, 16),
             color: Color(0xFF64748B),
           ),
         ),
@@ -209,8 +210,8 @@ class _SigninScreenState extends State<SigninScreen> {
         TextField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
-          style: const TextStyle(
-            fontSize: 16,
+          style: TextStyle(
+            fontSize: Responsive.s(context, 16),
             color: Color(0xFF1F2937),
           ),
           decoration: InputDecoration(
@@ -223,25 +224,25 @@ class _SigninScreenState extends State<SigninScreen> {
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
               borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: Responsive.s(context, 20)),
         TextField(
           controller: _passwordController,
           obscureText: _obscurePassword,
-          style: const TextStyle(
-            fontSize: 16,
+          style: TextStyle(
+            fontSize: Responsive.s(context, 16),
             color: Color(0xFF1F2937),
           ),
           decoration: InputDecoration(
@@ -265,20 +266,20 @@ class _SigninScreenState extends State<SigninScreen> {
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
               borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: Responsive.s(context, 20)),
         Row(
           children: [
             GestureDetector(
@@ -290,8 +291,8 @@ class _SigninScreenState extends State<SigninScreen> {
               child: Row(
                 children: [
                   Container(
-                    width: 20,
-                    height: 20,
+                    width: Responsive.s(context, 20),
+                    height: Responsive.s(context, 20),
                     decoration: BoxDecoration(
                       color: _rememberMe ? const Color(0xFF2563EB) : Colors.transparent,
                       border: Border.all(
@@ -308,11 +309,11 @@ class _SigninScreenState extends State<SigninScreen> {
                           )
                         : null,
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
+                  SizedBox(width: Responsive.s(context, 8)),
+                  Text(
                     'Remember me',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: Responsive.s(context, 14),
                       color: Color(0xFF64748B),
                     ),
                   ),
@@ -324,10 +325,10 @@ class _SigninScreenState extends State<SigninScreen> {
               onPressed: () {
                 // TODO: Implement forgot password
               },
-              child: const Text(
+              child: Text(
                 'Forgot Password?',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: Responsive.s(context, 14),
                   color: Color(0xFF2563EB),
                   fontWeight: FontWeight.w600,
                 ),
@@ -356,25 +357,25 @@ class _SigninScreenState extends State<SigninScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF2563EB),
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: EdgeInsets.symmetric(vertical: Responsive.s(context, 16)),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
           ),
           elevation: 0,
         ),
         child: widget.isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
+            ? SizedBox(
+                height: Responsive.s(context, 20),
+                width: Responsive.s(context, 20),
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : const Text(
+            : Text(
                 'Sign In',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: Responsive.s(context, 16),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -391,11 +392,11 @@ class _SigninScreenState extends State<SigninScreen> {
           children: [
             Expanded(child: Divider(color: Colors.grey.shade300)),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: Responsive.s(context, 16)),
               child: Text(
                 'Emergency Features',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: Responsive.s(context, 12),
                   color: Colors.grey.shade600,
                   fontWeight: FontWeight.w500,
                 ),
@@ -404,7 +405,7 @@ class _SigninScreenState extends State<SigninScreen> {
             Expanded(child: Divider(color: Colors.grey.shade300)),
           ],
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: Responsive.s(context, 20)),
         
         // Emergency buttons row
         Row(
@@ -413,23 +414,23 @@ class _SigninScreenState extends State<SigninScreen> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: _handleFakeCall,
-                icon: const Icon(Icons.phone_in_talk, size: 20),
-                label: const Text(
+                icon: Icon(Icons.phone_in_talk, size: Responsive.s(context, 20)),
+                label: Text(
                   'Fake Call',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: Responsive.s(context, 14), fontWeight: FontWeight.w600),
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF10B981),
                   side: const BorderSide(color: Color(0xFF10B981), width: 1.5),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: Responsive.s(context, 14)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
                   ),
                 ),
               ),
             ),
             
-            const SizedBox(width: 12),
+            SizedBox(width: Responsive.s(context, 12)),
             
             // Emergency Siren button
             Expanded(
@@ -437,11 +438,11 @@ class _SigninScreenState extends State<SigninScreen> {
                 onPressed: _handleSirenToggle,
                 icon: Icon(
                   _isSirenActive ? Icons.volume_off : Icons.emergency,
-                  size: 20,
+                  size: Responsive.s(context, 20),
                 ),
                 label: Text(
                   _isSirenActive ? 'Stop Siren' : 'Siren',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: Responsive.s(context, 14), fontWeight: FontWeight.w600),
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _isSirenActive ? Colors.grey.shade600 : const Color(0xFFEF4444),
@@ -449,9 +450,9 @@ class _SigninScreenState extends State<SigninScreen> {
                     color: _isSirenActive ? Colors.grey.shade400 : const Color(0xFFEF4444),
                     width: 1.5,
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: EdgeInsets.symmetric(vertical: Responsive.s(context, 14)),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
                   ),
                 ),
               ),
@@ -460,11 +461,11 @@ class _SigninScreenState extends State<SigninScreen> {
         ),
         
         // Info text
-        const SizedBox(height: 12),
+        SizedBox(height: Responsive.s(context, 12)),
         Text(
           'Emergency tools available without login',
           style: TextStyle(
-            fontSize: 11,
+            fontSize: Responsive.s(context, 11),
             color: Colors.grey.shade500,
             fontStyle: FontStyle.italic,
           ),
@@ -477,19 +478,19 @@ class _SigninScreenState extends State<SigninScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
+        Text(
           "Don't have an account? ",
           style: TextStyle(
-            fontSize: 14,
+            fontSize: Responsive.s(context, 14),
             color: Color(0xFF6B7280),
           ),
         ),
         GestureDetector(
           onTap: widget.onNavigateToSignup,
-          child: const Text(
+          child: Text(
             'Sign up',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: Responsive.s(context, 14),
               color: Color(0xFF2563EB),
               fontWeight: FontWeight.w600,
             ),

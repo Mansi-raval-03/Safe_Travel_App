@@ -10,6 +10,11 @@ allprojects {
     }
 }
 
+// Google Services plugin (Firebase) removed from the root buildscript so
+// the project can build without `android/app/google-services.json`.
+// If you want FCM/native Firebase support, add the plugin classpath back
+// and provide `android/app/google-services.json` from your Firebase console.
+
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
 

@@ -9,7 +9,7 @@ class SOSSettingsScreen extends StatefulWidget {
 
 class _SOSSettingsScreenState extends State<SOSSettingsScreen> {
   final EnhancedSOSService _sosService = EnhancedSOSService.instance;
-  int _timerDuration = 10;
+  int _timerDuration = 2;
   bool _autoSendEnabled = true;
   bool _isLoading = true;
 
@@ -155,9 +155,9 @@ class _SOSSettingsScreenState extends State<SOSSettingsScreen> {
                           
                           Slider(
                             value: _timerDuration.toDouble(),
-                            min: 5.0,
+                            min: 1.0,
                             max: 60.0,
-                            divisions: 11,
+                            divisions: 59,
                             label: '${_timerDuration}s',
                             onChanged: _autoSendEnabled ? (double value) {
                               setState(() {
@@ -172,10 +172,10 @@ class _SOSSettingsScreenState extends State<SOSSettingsScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
+                              _buildPresetButton('1s', 1),
+                              _buildPresetButton('2s', 2),
                               _buildPresetButton('5s', 5),
-                              _buildPresetButton('10s', 10),
                               _buildPresetButton('15s', 15),
-                              _buildPresetButton('30s', 30),
                               _buildPresetButton('60s', 60),
                             ],
                           ),

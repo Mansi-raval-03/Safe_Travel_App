@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'services/navigation_service.dart';
 import 'services/notification_service.dart';
+import 'services/fcm_service.dart';
 import 'package:safe_travel_app/models/emergency_screen.dart';
 import 'package:safe_travel_app/screens/setting_screen.dart';
 import 'screens/signin_screen.dart';
@@ -54,13 +55,20 @@ void main() async {
   }
 
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  // Initialize auto location sync services (blocking) for normal runs
-  // Initialize notifications first (so background handlers are registered)
+  // Initialize notifications first so local notification channels are available
   try {
     await NotificationService.initialize();
     print('✅ NotificationService initialized');
   } catch (e) {
     print('❌ NotificationService initialization failed: $e');
+  }
+
+  // Then initialize Firebase Cloud Messaging which may post local notifications
+  try {
+    await FCMService().initialize();
+    print('✅ FCMService initialized');
+  } catch (e) {
+    print('❌ FCMService initialization failed: $e');
   }
 
   await _initializeAutoLocationSync();

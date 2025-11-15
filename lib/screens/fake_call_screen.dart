@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/fake_call_service.dart';
+import '../utils/responsive.dart';
 import 'fake_call_in_progress_screen.dart';
 
 /// Full-screen fake incoming call UI
@@ -82,12 +83,12 @@ class _FakeCallScreenState extends State<FakeCallScreen> with SingleTickerProvid
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: EdgeInsets.all(20.0 * Responsive.scale(context)),
                 child: Text(
                   'Incoming Call',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.7),
-                    fontSize: 16,
+                    fontSize: Responsive.s(context, 16),
                   ),
                 ),
               ),
@@ -101,19 +102,19 @@ class _FakeCallScreenState extends State<FakeCallScreen> with SingleTickerProvid
                   return Transform.scale(
                     scale: _pulseAnimation.value,
                     child: Container(
-                      width: 120,
-                      height: 120,
+                      width: Responsive.s(context, 120),
+                      height: Responsive.s(context, 120),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.grey.shade800,
                         border: Border.all(
                           color: Colors.white.withOpacity(0.3),
-                          width: 3,
+                          width: 3 * Responsive.scale(context),
                         ),
                       ),
                       child: Icon(
                         Icons.person,
-                        size: 60,
+                        size: Responsive.s(context, 60),
                         color: Colors.white.withOpacity(0.8),
                       ),
                     ),
@@ -121,34 +122,34 @@ class _FakeCallScreenState extends State<FakeCallScreen> with SingleTickerProvid
                 },
               ),
               
-              const SizedBox(height: 30),
+              SizedBox(height: Responsive.s(context, 30)),
               
               // Caller name
               Text(
                 widget.callerName,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 32,
+                  fontSize: Responsive.s(context, 32),
                   fontWeight: FontWeight.bold,
                 ),
               ),
               
-              const SizedBox(height: 10),
+              SizedBox(height: Responsive.s(context, 10)),
               
               // Caller number or label
               Text(
                 widget.callerNumber ?? 'Mobile',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.7),
-                  fontSize: 18,
+                  fontSize: Responsive.s(context, 18),
                 ),
               ),
               
-              const SizedBox(height: 20),
+              SizedBox(height: Responsive.s(context, 20)),
               
               // Ringing indicator
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16 * Responsive.scale(context), vertical: 8 * Responsive.scale(context)),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -158,15 +159,15 @@ class _FakeCallScreenState extends State<FakeCallScreen> with SingleTickerProvid
                   children: [
                     Icon(
                       Icons.phone_in_talk,
-                      size: 16,
+                      size: Responsive.s(context, 16),
                       color: Colors.white.withOpacity(0.7),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: Responsive.s(context, 8)),
                     Text(
                       'Ringing...',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.7),
-                        fontSize: 14,
+                        fontSize: Responsive.s(context, 14),
                       ),
                     ),
                   ],
@@ -177,7 +178,7 @@ class _FakeCallScreenState extends State<FakeCallScreen> with SingleTickerProvid
               
               // Call action buttons
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+                padding: EdgeInsets.symmetric(horizontal: Responsive.s(context, 40), vertical: Responsive.s(context, 40)),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -218,25 +219,25 @@ class _FakeCallScreenState extends State<FakeCallScreen> with SingleTickerProvid
         GestureDetector(
           onTap: onPressed,
           child: Container(
-            width: 70,
-            height: 70,
+            width: Responsive.s(context, 70),
+            height: Responsive.s(context, 70),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: color,
             ),
             child: Icon(
               icon,
-              size: 32,
+              size: Responsive.s(context, 32),
               color: Colors.white,
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: Responsive.s(context, 10)),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 14,
+            fontSize: Responsive.s(context, 14),
           ),
         ),
       ],

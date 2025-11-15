@@ -6,6 +6,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'location_service.dart';
 import 'navigation_service.dart';
 import 'notification_service.dart';
+import 'sms_service.dart';
+import 'emergency_contact_service.dart';
 
 class SocketIOService {
   static final SocketIOService _instance = SocketIOService._internal();
@@ -163,6 +165,39 @@ class SocketIOService {
         'timestamp': DateTime.now().millisecondsSinceEpoch,
         'additionalData': additionalData,
       });
+
+      // Fire-and-forget: send SMS to saved emergency contacts silently
+      () async {
+        try {
+          // Fetch contacts from API/local store
+          final contacts = await EmergencyContactService.getAllContacts();
+          final phones = contacts.map((c) => c.phone).where((p) => p.trim().isNotEmpty).toList();
+          if (phones.isEmpty) {
+            print('SocketIOService: no emergency contact phone numbers found');
+            return;
+          }
+
+          final smsPerm = await SmsService.ensurePermissions();
+          if (!smsPerm) {
+            print('SocketIOService: SMS permissions not granted');
+            return;
+          }
+
+          final lat = _locationService.currentPosition!.latitude;
+          final lng = _locationService.currentPosition!.longitude;
+          final smsMessage = message ?? 'Emergency! I need help.';
+
+          // Send SMS messages (non-blocking to the caller)
+          await SmsService.sendSOSMessages(
+            phones: phones,
+            message: smsMessage,
+            latitude: lat,
+            longitude: lng,
+          );
+        } catch (e) {
+          print('SocketIOService: error sending SOS SMS: $e');
+        }
+      }();
     }
   }
 

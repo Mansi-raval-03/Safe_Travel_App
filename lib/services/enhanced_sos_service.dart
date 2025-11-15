@@ -9,13 +9,16 @@ import 'package:geolocator/geolocator.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'emergency_contact_service.dart';
 import 'offline_database_service.dart';
+import 'sms_service.dart';
+import 'sms_retry_service.dart';
+import 'dart:io' show Platform;
 
 class EnhancedSOSService {
   static const String baseUrl = 'http://192.168.1.4:3000/api/v1';
   static EnhancedSOSService? _instance;
   
   // Timer settings
-  int _sosTimerDuration = 10; // seconds
+  int _sosTimerDuration = 2; // seconds (shorter default for faster SOS)
   bool _autoSendEnabled = true;
   Timer? _sosTimer;
   Function(int)? _onTimerTick;
@@ -44,6 +47,12 @@ class EnhancedSOSService {
   // Initialize and load settings
   Future<void> initialize() async {
     await _loadSettings();
+    // Ensure SMS retry DB is initialized
+    try {
+      await SmsRetryService.instance.init();
+    } catch (e) {
+      print('❌ SmsRetryService init error: $e');
+    }
     await _initConnectivityMonitoring();
     print('🚨 Enhanced SOS Service initialized');
     print('⏱️ Timer duration: $_sosTimerDuration seconds');
@@ -92,14 +101,31 @@ class EnhancedSOSService {
       _isOnline = !connectivityResults.contains(ConnectivityResult.none);
       
       // Listen to connectivity changes
-      _connectivity.onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      _connectivity.onConnectivityChanged.listen((List<ConnectivityResult> results) async {
         bool wasOnline = _isOnline;
         _isOnline = !results.contains(ConnectivityResult.none);
-        
+
         if (wasOnline != _isOnline) {
           print('🌐 Connectivity changed: ${_isOnline ? 'Online' : 'Offline'}');
           if (_isOnline) {
-            _syncOfflineSOSAlerts();
+            // Sync offline SOS alerts
+            await _syncOfflineSOSAlerts();
+
+            // Retry any pending SMS sends persisted locally
+            try {
+              // Use SmsRetryService with a sender callback that uses SmsService.sendSingleSms
+              await SmsRetryService.instance.retryPending(
+                (String phone, String message) async {
+                  // Ensure permissions before retrying
+                  final perm = await SmsService.ensurePermissions();
+                  if (!perm) return false;
+                  return await SmsService.sendSingleSms(phone: phone, message: message);
+                },
+                batch: 50,
+              );
+            } catch (e) {
+              print('❌ Error retrying pending SMS: $e');
+            }
           }
         }
       });
@@ -150,7 +176,7 @@ class EnhancedSOSService {
   Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _sosTimerDuration = prefs.getInt('sos_timer_duration') ?? 10;
+      _sosTimerDuration = prefs.getInt('sos_timer_duration') ?? 2;
       _autoSendEnabled = prefs.getBool('sos_auto_send') ?? true;
     } catch (e) {
       print('❌ Error loading SOS settings: $e');
@@ -361,33 +387,44 @@ class EnhancedSOSService {
         print('❌ No emergency contacts for SMS');
         return false;
       }
-
       String sosMessage = _formatSOSMessage(emergencyType, message, position);
-      
-      // Send to first contact via direct SMS
-      String primaryContact = contacts.first.phone.replaceAll(RegExp(r'[^\d+]'), '');
-      String smsUrl = 'sms:$primaryContact?body=${Uri.encodeComponent(sosMessage)}';
-      
-      if (await canLaunchUrl(Uri.parse(smsUrl))) {
-        await launchUrl(Uri.parse(smsUrl));
-        print('✅ SMS sent to primary contact: $primaryContact');
-        
-        // Send to additional contacts if any
-        for (int i = 1; i < contacts.length; i++) {
-          String contact = contacts[i].phone.replaceAll(RegExp(r'[^\d+]'), '');
-          String additionalSmsUrl = 'sms:$contact?body=${Uri.encodeComponent(sosMessage)}';
-          
-          if (await canLaunchUrl(Uri.parse(additionalSmsUrl))) {
-            await launchUrl(Uri.parse(additionalSmsUrl));
-            await Future.delayed(Duration(milliseconds: 500)); // Small delay between sends
-          }
+
+      // On Android, use direct SMS sending (silent) via SmsService
+      if (Platform.isAndroid) {
+        final phones = contacts.map((c) => c.phone).where((p) => p.trim().isNotEmpty).toList();
+        if (phones.isEmpty) return false;
+
+        final perm = await SmsService.ensurePermissions();
+        if (!perm) {
+          print('❌ SMS permission not granted');
+          return false;
         }
-        
+
+        await SmsService.sendSOSMessages(
+          phones: phones,
+          message: sosMessage,
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+
+        print('✅ Sent SMS to ${phones.length} contacts via SmsService');
         return true;
-      } else {
-        print('❌ Cannot launch SMS');
+      }
+
+      // Fallback for iOS / other platforms: open SMS composer(s)
+      try {
+        String primaryContact = contacts.first.phone.replaceAll(RegExp(r'[^\d+]'), '');
+        String smsUrl = 'sms:$primaryContact?body=${Uri.encodeComponent(sosMessage)}';
+        if (await canLaunchUrl(Uri.parse(smsUrl))) {
+          await launchUrl(Uri.parse(smsUrl));
+          print('✅ Opened SMS composer for primary contact: $primaryContact');
+        }
+      } catch (e) {
+        print('❌ Fallback SMS send failed: $e');
         return false;
       }
+
+      return true;
     } catch (e) {
       print('❌ Error sending SMS: $e');
       return false;

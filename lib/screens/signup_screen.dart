@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/responsive.dart';
 
 class SignUpScreen extends StatefulWidget {
   final Function(String, String, String, String) onSignup; // name, email, phone, password
@@ -115,14 +116,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              const SizedBox(height: 48),
+              SizedBox(height: Responsive.s(context, 48)),
 
               // Logo and Title
               Column(
                 children: [
                   Container(
-                    width: 80,
-                    height: 80,
+                    width: Responsive.s(context, 80),
+                    height: Responsive.s(context, 80),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
@@ -134,33 +135,33 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.person_add,
-                      size: 40,
-                      color: Color(0xFF3B82F6),
+                      size: Responsive.s(context, 40),
+                      color: const Color(0xFF3B82F6),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
+                  SizedBox(height: Responsive.s(context, 24)),
+                  Text(
                     'Create Account',
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: Responsive.s(context, 32),
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: Responsive.s(context, 8)),
                   Text(
                     'Sign up to get started',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: Responsive.s(context, 16),
                       color: Colors.blue.shade100,
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: Responsive.s(context, 24)),
 
               // Form with scrollable area
               Expanded(
@@ -173,35 +174,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(Responsive.s(context, 24)),
                     child: SingleChildScrollView( // <-- FIX
                       child: Form(
                         key: _formKey,
                         child: Column(
                           children: [
-                            const SizedBox(height: 16),
+                            SizedBox(height: Responsive.s(context, 16)),
 
                             // Display error message if exists
                             if (widget.errorMessage.isNotEmpty)
                               Container(
-                                padding: const EdgeInsets.all(12),
-                                margin: const EdgeInsets.only(bottom: 16),
+                                padding: EdgeInsets.all(Responsive.s(context, 12)),
+                                margin: EdgeInsets.only(bottom: Responsive.s(context, 16)),
                                 decoration: BoxDecoration(
                                   color: Colors.red.shade50,
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(Responsive.s(context, 8)),
                                   border: Border.all(color: Colors.red.shade300),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(Icons.error_outline,
                                         color: Colors.red.shade600, size: 20),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: Responsive.s(context, 8)),
                                     Expanded(
                                       child: Text(
                                         widget.errorMessage,
                                         style: TextStyle(
                                           color: Colors.red.shade700,
-                                          fontSize: 14,
+                                          fontSize: Responsive.s(context, 14),
                                         ),
                                       ),
                                     ),
@@ -215,7 +216,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               error: _errors['name'],
                               onChanged: () => _clearError('name'),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: Responsive.s(context, 16)),
 
                             _buildTextField(
                               label: "Email",
@@ -223,7 +224,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               error: _errors['email'],
                               onChanged: () => _clearError('email'),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: Responsive.s(context, 16)),
 
                             _buildTextField(
                               label: "Phone Number",
@@ -231,7 +232,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               error: _errors['phone'],
                               onChanged: () => _clearError('phone'),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: Responsive.s(context, 16)),
 
                             _buildTextField(
                               label: "Password",
@@ -277,31 +278,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 24),
+                            SizedBox(height: Responsive.s(context, 24)),
 
                             // Sign Up Button
                             SizedBox(
                               width: double.infinity,
-                              height: 48,
+                              height: Responsive.s(context, 48),
                               child: ElevatedButton(
                                 onPressed: _handleSubmit,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF3B82F6),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
                                   ),
                                 ),
-                                child: const Text(
+                                child: Text(
                                   'Sign Up',
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: Responsive.s(context, 18),
                                     fontWeight: FontWeight.w600,
                                     color: Colors.white,
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: Responsive.s(context, 16)),
 
                             // Sign In Link
                             Row(
@@ -311,16 +312,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   'Already have an account? ',
                                   style: TextStyle(
                                     color: Colors.grey.shade600,
-                                    fontSize: 14,
+                                    fontSize: Responsive.s(context, 14),
                                   ),
                                 ),
                                 TextButton(
                                   onPressed: widget.onNavigateToSignin,
-                                  child: const Text(
+                                  child: Text(
                                     'Sign in',
                                     style: TextStyle(
                                       color: Color(0xFF3B82F6),
-                                      fontSize: 14,
+                                      fontSize: Responsive.s(context, 14),
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -355,12 +356,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: Responsive.s(context, 16),
             fontWeight: FontWeight.w500,
             color: Colors.grey.shade700,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: Responsive.s(context, 8)),
         TextFormField(
           controller: controller,
           obscureText: obscureText,
@@ -368,19 +369,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
           decoration: InputDecoration(
             hintText: 'Enter your $label',
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                EdgeInsets.symmetric(horizontal: Responsive.s(context, 16), vertical: Responsive.s(context, 16)),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
               borderSide: BorderSide(
                 color: error != null ? Colors.red : Colors.grey.shade300,
                 width: 2,
               ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
               borderSide: const BorderSide(
                 color: Color(0xFF3B82F6),
                 width: 2,
@@ -391,7 +392,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         if (error != null)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: EdgeInsets.only(top: Responsive.s(context, 4)),
             child: Text(
               error,
               style: const TextStyle(

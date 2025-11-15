@@ -32,6 +32,23 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
   void initState() {
     super.initState();
     _loadEmergencyContacts();
+    _loadTimerFromSettings();
+  }
+
+  Future<void> _loadTimerFromSettings() async {
+    try {
+      // Use EnhancedSOSService configured timer if available
+      final sosService = EnhancedSOSService.instance;
+      await sosService.initialize();
+      final duration = sosService.timerDuration;
+      // Clamp to minimum 1 second for safety
+      setState(() {
+        _countdown = (duration <= 0) ? 1 : duration;
+      });
+    } catch (e) {
+      print('Could not load SOS timer from settings: $e');
+      // Keep default countdown
+    }
   }
 
   /// Load emergency contacts from MongoDB
@@ -303,7 +320,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
                                           Icon(Icons.shield, color: Colors.white, size: 20),
                                           SizedBox(width: 8),
                                           Text(
-                                            'Activate SOS (10s delay)',
+                                            'Activate SOS (${_countdown}s delay)',
                                             style: TextStyle(
                                               fontSize: 18,
                                               fontWeight: FontWeight.w600,

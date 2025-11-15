@@ -17,7 +17,8 @@ class NotificationService {
       debugPrint('Notification permission request failed: $e');
     }
 
-    const AndroidInitializationSettings androidInit = AndroidInitializationSettings('app_icon');
+    // Use the app launcher icon resource to avoid missing resource errors
+    const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     final DarwinInitializationSettings darwinInit = DarwinInitializationSettings();
 
     final InitializationSettings settings = InitializationSettings(
@@ -61,6 +62,31 @@ class NotificationService {
 
     await _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
+  }
+
+  /// Background-safe initialize used from FCM background handlers (runs in separate isolate)
+  @pragma('vm:entry-point')
+  static Future<void> initializeInBackground() async {
+    try {
+      const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      final InitializationSettings settings = InitializationSettings(android: androidInit);
+      await _plugin.initialize(settings);
+
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'emergency_alerts',
+        'Emergency Alerts',
+        description: 'High-priority emergency alerts (SOS)',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+      );
+
+      await _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channel);
+    } catch (e) {
+      debugPrint('Background notification initialization failed: $e');
+    }
   }
 
   /// Request the platform notification permission (Android 13+: POST_NOTIFICATIONS)

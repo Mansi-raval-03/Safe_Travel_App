@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../utils/responsive.dart';
 
 class AlertMapScreen extends StatefulWidget {
   final double latitude;
@@ -39,7 +40,10 @@ class _AlertMapScreenState extends State<AlertMapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Live Location'),
+        title: Text(
+          'Live Location',
+          style: TextStyle(fontSize: Responsive.s(context, 18)),
+        ),
       ),
       body: GoogleMap(
         initialCameraPosition: _initialPosition,

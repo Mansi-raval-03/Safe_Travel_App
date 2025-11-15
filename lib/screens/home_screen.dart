@@ -8,6 +8,7 @@ import '../services/emergency_siren_service.dart';
 import 'fake_call_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import '../utils/responsive.dart';
 
 class HomeScreen extends StatefulWidget {
   final User? user;
@@ -292,8 +293,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       },
     ];
 
+    final Size _screenSize = MediaQuery.of(context).size;
+    final double _scale = Responsive.scale(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color.fromARGB(255, 252, 250, 248),
       body: AnimatedBuilder(
         animation: _fadeAnimation,
         builder: (context, child) {
@@ -303,7 +307,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               slivers: [
                 // Modern App Bar with Hero Section
                 SliverAppBar(
-                  expandedHeight: 280,
+                  expandedHeight: Responsive.s(context, 290),
                   floating: false,
                   pinned: true,
                   elevation: 0,
@@ -315,9 +319,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            Color(0xFF6366F1),
-                            Color(0xFF8B5CF6),
-                            Color(0xFF06B6D4),
+                            Color.fromARGB(255, 99, 241, 196),
+                            Color.fromARGB(255, 143, 92, 246),
+                            Color.fromARGB(255, 6, 147, 212),
                           ],
                         ),
                       ),
@@ -339,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           // Hero content
                           SafeArea(
                             child: Padding(
-                              padding: const EdgeInsets.all(24.0),
+                              padding: EdgeInsets.all(Responsive.s(context, 24)),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -351,34 +355,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       Row(
                                         children: [
                                           Container(
-                                            width: 48,
-                                            height: 48,
+                                            width: Responsive.s(context, 45),
+                                            height: Responsive.s(context, 48),
                                             decoration: BoxDecoration(
                                               color: Colors.white.withOpacity(
-                                                0.2,
+                                                0.3,
                                               ),
                                               borderRadius:
-                                                  BorderRadius.circular(16),
+                                                  BorderRadius.circular(Responsive.s(context, 16)),
                                               border: Border.all(
                                                 color: Colors.white.withOpacity(
-                                                  0.3,
+                                                  0.4,
                                                 ),
-                                                width: 2,
+                                                width: Responsive.s(context, 2),
                                               ),
                                             ),
 
                                             child: Padding(
-                                              padding: const EdgeInsets.all(
-                                                16.0,
-                                              ),
-                                              child: const Icon(
+                                              padding:
+                                                  EdgeInsets.all(Responsive.s(context, 16)),
+                                              child: Icon(
                                                 Icons.security_outlined,
                                                 color: Colors.white,
-                                                size: 40,
+                                                size: Responsive.s(context, 37),
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 12),
+                                          SizedBox(width: 12 * _scale),
                                           Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
@@ -388,15 +391,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 style: TextStyle(
                                                   color: Colors.white
                                                       .withOpacity(0.9),
-                                                  fontSize: 14,
+                                                  fontSize: 14 * _scale,
                                                   fontWeight: FontWeight.w500,
                                                 ),
                                               ),
-                                              const Text(
+                                              Text(
                                                 'Your Safety Companion',
                                                 style: TextStyle(
                                                   color: Colors.white,
-                                                  fontSize: 12,
+                                                  fontSize: 12 * _scale,
                                                   fontWeight: FontWeight.w400,
                                                 ),
                                               ),
@@ -421,33 +424,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           icon: const Icon(
                                             Icons.settings_rounded,
                                             color: Colors.white,
-                                            size: 22,
+                                            size: 22 * 1.0,
                                           ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 32),
+                                  SizedBox(height: Responsive.s(context, 32)),
                                   // Hero text
                                   Text(
                                     'Hello,\n${widget.user?.name.split(' ').first ?? 'Traveler'}! 👋',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 32,
+                                      fontSize: Responsive.s(context, 32),
                                       fontWeight: FontWeight.bold,
                                       height: 1.2,
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  SizedBox(height: Responsive.s(context, 12)),
                                   Text(
                                     'Ready for your next safe journey?',
                                     style: TextStyle(
                                       color: Colors.white.withOpacity(0.9),
-                                      fontSize: 16,
+                                      fontSize: Responsive.s(context, 16),
                                       fontWeight: FontWeight.w400,
                                     ),
                                   ),
-                                  const SizedBox(height: 24),
+                                  SizedBox(height: Responsive.s(context, 24)),
                                   // Status indicators
                                   Row(
                                     children: [
@@ -457,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         color: const Color(0xFF10B981),
                                         onTap: null,
                                       ),
-                                      const SizedBox(width: 12),
+                                      SizedBox(width: 12 * _scale),
                                       _buildStatusChip(
                                         icon: Icons.location_on_rounded,
                                         text: 'GPS Active',
@@ -480,9 +483,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                 // Quick Actions Grid
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 16.0,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Responsive.s(context, 26),
+                    vertical: Responsive.s(context, 16),
                   ),
                   sliver: SliverGrid(
                     delegate: SliverChildBuilderDelegate((context, index) {
@@ -495,20 +498,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         child: _buildActionCard(action, index),
                       );
                     }, childCount: quickActions.length),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.0,
-                        ),
+                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: _screenSize.width > 900
+                          ? 280
+                          : _screenSize.width > 700
+                              ? 230
+                              : 180,
+                      crossAxisSpacing: Responsive.s(context, 13),
+                      mainAxisSpacing: Responsive.s(context, 13),
+                      childAspectRatio: 1.0,
+                    ),
                   ),
                 ),
 
                 // Current Location Card
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    padding: EdgeInsets.symmetric(horizontal: Responsive.s(context, 24)),
                     child: _buildLocationCard(),
                   ),
                 ),
@@ -516,7 +522,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 // Safety Status Card
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(24.0),
+                    padding: EdgeInsets.all(Responsive.s(context, 24)),
                     child: _buildSafetyStatusCard(),
                   ),
                 ),
@@ -576,9 +582,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (context, value, child) {
         return Transform.scale(
           scale: value,
-          child: Container(
+            child: Container(
             width: double.infinity,
-            constraints: const BoxConstraints(minHeight: 160, maxHeight: 180),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
@@ -595,77 +600,94 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ],
             ),
-            child: Material(
+                child: Material(
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(20),
               child: InkWell(
                 onTap: action['action'] as VoidCallback,
                 borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              (action['color'] as Color).withOpacity(0.15),
-                              (action['color'] as Color).withOpacity(0.08),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: (action['color'] as Color).withOpacity(0.25),
-                            width: 1.5,
-                          ),
+                    child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final double cardSize = constraints.biggest.shortestSide > 0
+                                ? constraints.biggest.shortestSide
+                                : (MediaQuery.of(context).size.width * 0.25);
+                            // Icon box is a fraction of the card size; keep it proportional
+                            final double iconBoxSize = (cardSize * 0.36).clamp(cardSize * 0.22, cardSize * 0.5);
+                            final double iconSize = (iconBoxSize * 0.52).clamp(20.0, 96.0);
+                            final double horizontalPadding = (cardSize * 0.06).clamp(8.0, 20.0);
+                            final double verticalPadding = (cardSize * 0.06).clamp(8.0, 20.0);
+                            final double titleFont = (cardSize * 0.10).clamp(12.0, 18.0);
+                            final double descFont = (cardSize * 0.075).clamp(10.0, 14.0);
+
+                            return Padding(
+                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
+                              child: AspectRatio(
+                                aspectRatio: 1,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: iconBoxSize,
+                                      height: iconBoxSize,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            (action['color'] as Color).withOpacity(0.18),
+                                            (action['color'] as Color).withOpacity(0.06),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(iconBoxSize * 0.22),
+                                        border: Border.all(
+                                          color: (action['color'] as Color).withOpacity(0.22),
+                                          width: (iconBoxSize * 0.03).clamp(1.0, 2.5),
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Icon(
+                                          action['icon'] as IconData,
+                                          color: action['color'] as Color,
+                                          size: iconSize,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(height: cardSize * 0.08),
+                                    Flexible(
+                                      child: Text(
+                                        action['title'] as String,
+                                        style: TextStyle(
+                                          fontSize: titleFont,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF1F2937),
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    SizedBox(height: cardSize * 0.03),
+                                    Flexible(
+                                      child: Text(
+                                        action['description'] as String,
+                                        style: TextStyle(
+                                          fontSize: descFont,
+                                          fontWeight: FontWeight.w400,
+                                          color: Colors.grey[600],
+                                          height: 1.2,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                        child: Icon(
-                          action['icon'] as IconData,
-                          color: action['color'] as Color,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Flexible(
-                        child: Text(
-                          action['title'] as String,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1F2937),
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Flexible(
-                        child: Text(
-                          action['description'] as String,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.grey[600],
-                            height: 1.2,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ),
           ),
