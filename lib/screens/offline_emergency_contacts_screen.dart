@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/integrated_offline_emergency_service.dart';
+import '../widgets/bottom_navigation.dart';
 
 class OfflineEmergencyContactsScreen extends StatefulWidget {
   final Function(int)? onNavigate;
@@ -387,6 +388,10 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
         ],
       ),
       body: _buildBody(),
+      bottomNavigationBar: BottomNavigation(
+        currentIndex: 5,
+        onNavigate: widget.onNavigate ?? (int idx) {},
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addContact,
         backgroundColor: Colors.red.shade600,
@@ -672,18 +677,7 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _sendSMS(contact.phone),
-                    icon: const Icon(Icons.message, size: 18),
-                    label: const Text('SMS'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade600,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
+                // SMS button removed to prevent SOS sending from contacts page
               ],
             ),
           ],

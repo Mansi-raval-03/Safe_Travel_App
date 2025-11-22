@@ -8,6 +8,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'offline_database_service.dart';
 import 'location_service.dart';
 import 'auth_service.dart';
+import 'sms_service.dart';
 
 /// Integrated Offline Emergency Contact & SOS Service
 /// Handles offline storage of emergency contacts and offline SOS alerts with live location sharing
@@ -582,23 +583,20 @@ SOS Alert ID: $sosId
   /// Send SMS
   Future<bool> _sendSMS(String phoneNumber, String message) async {
     try {
-      // Check SMS permission
-      final permission = await Permission.sms.request();
-      if (!permission.isGranted) {
-        print('⚠️ SMS permission not granted');
+      // Request and ensure SMS permission, then send directly via SmsService.
+      final permsOk = await SmsService.ensurePermissions();
+      if (!permsOk) {
+        print('⚠️ SMS permission not granted - automatic send not possible');
         return false;
       }
-      
-      final uri = Uri(
-        scheme: 'sms',
-        path: phoneNumber,
-        queryParameters: {'body': message},
-      );
-      
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
+
+      final sent = await SmsService.sendSingleSms(phone: phoneNumber, message: message);
+      if (sent) {
+        print('📱 SMS automatically sent to $phoneNumber');
         return true;
       }
+
+      print('❌ SmsService reported failure sending to $phoneNumber');
       return false;
     } catch (e) {
       print('❌ Error sending SMS: $e');
