@@ -852,7 +852,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 15),
             _buildStatusRow(
               'Emergency Contacts',
               _isLoadingContacts

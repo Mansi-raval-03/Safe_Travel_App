@@ -510,7 +510,7 @@ class _MainAppState extends State<MainApp> {
       );
     case 12:
       return TripsScreen(
-        userId: _user?.id ?? '',
+        userId: _user?.id ?? '', onNavigate: (int value) { _navigateToScreen(3); },
       );
     default:
       return SigninScreen(

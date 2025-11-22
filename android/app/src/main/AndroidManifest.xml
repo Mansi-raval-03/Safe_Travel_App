@@ -17,7 +17,7 @@
     <uses-permission android:name="android.permission.SEND_SMS" />
 
     <application
-        android:label="safe_travel_app"
+        android:label="Safe Travel"
         android:icon="@mipmap/ic_launcher">
         
         <!-- Google Maps API Key -->

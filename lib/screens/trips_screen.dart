@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/bottom_navigation.dart';
 import '../models/trip_event.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
@@ -6,7 +7,8 @@ import '../services/trip_service.dart';
 
 class TripsScreen extends StatefulWidget {
   final String userId;
-  const TripsScreen({Key? key, required this.userId}) : super(key: key);
+  final ValueChanged<int> onNavigate;
+  const TripsScreen({Key? key, required this.userId, required this.onNavigate}) : super(key: key);
 
   @override
   State<TripsScreen> createState() => _TripsScreenState();
@@ -115,11 +117,18 @@ class _TripsScreenState extends State<TripsScreen> {
   Widget build(BuildContext context) {
     final dateFmt = DateFormat('yyyy-MM-dd HH:mm');
     return Scaffold(
-      appBar: AppBar(title: const Text('Trips')),
+      appBar: AppBar(
+        title: const Text('Trips'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios),
+          onPressed: () => widget.onNavigate(2),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            // AppBar leading handles back navigation
             // Title with simple suggestion chips
             TextField(
               controller: _titleController,
@@ -209,6 +218,10 @@ class _TripsScreenState extends State<TripsScreen> {
             )
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigation(
+        currentIndex: 12, // Trips screen index in MainApp
+        onNavigate: widget.onNavigate,
       ),
     );
   }

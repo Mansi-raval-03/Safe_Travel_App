@@ -4,28 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-// Repo services
-import '../services/location_service.dart';
-import '../services/emergency_location_service.dart';
-import '../widgets/bottom_navigation.dart';
 
 // Placeholder: set at runtime using secure config (do NOT commit keys).
 const String _kGooglePlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
 
-class MapScreen extends StatefulWidget {
-  final void Function(int)? onNavigate;
-  final VoidCallback? onTriggerSOS;
-  /// Optional bottom navigation widget provided by the parent app.
-  /// If null, the screen will not build its own BottomNavigationBar.
-  final Widget? bottomNavigationBar;
-
-  const MapScreen({Key? key, this.onNavigate, this.onTriggerSOS, this.bottomNavigationBar}) : super(key: key);
+class MapScreenClean extends StatefulWidget {
+  const MapScreenClean({Key? key}) : super(key: key);
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  State<MapScreenClean> createState() => _MapScreenCleanState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenCleanState extends State<MapScreenClean> {
   final Completer<GoogleMapController> _mapController = Completer();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
@@ -40,7 +30,7 @@ class _MapScreenState extends State<MapScreen> {
   List<Map<String, dynamic>> _placeSuggestions = [];
 
   static const CameraPosition _initialCamera = CameraPosition(
-    target: LatLng(20.5937, 78.9629),
+    target: LatLng(20.5937, 78.9629), // fallback: India center
     zoom: 4,
   );
 
@@ -62,55 +52,29 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _initLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    if (permission == LocationPermission.deniedForever) return;
+
     try {
-      final ok = await LocationService().initialize();
-      if (!ok) return;
-
-      final pos = LocationService().currentPosition ?? await LocationService().getCurrentLocation();
-      if (pos == null) return;
-
+      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
       setState(() => _currentPosition = pos);
       _moveCamera(LatLng(pos.latitude, pos.longitude), zoom: 15);
-      await _loadNearbyServices(pos.latitude, pos.longitude);
+      _generateSampleNearbyServices(pos.latitude, pos.longitude);
 
-      // Listen to the shared location stream
-      _positionSub = LocationService().locationStream.listen((p) {
-        if (!mounted) return;
+      _positionSub = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.best, distanceFilter: 10),
+      ).listen((p) {
         setState(() => _currentPosition = p);
         _updateMarkers();
-        // reload nearby services on significant moves
-        _maybeReloadNearbyServices(p);
       });
-    } catch (e) {
-      debugPrint('Error initializing LocationService: $e');
-    }
-  }
-
-  Future<void> _maybeReloadNearbyServices(Position p) async {
-    // reload when moved more than ~200 meters from last known
-    if (_nearbyServices.isEmpty) {
-      await _loadNearbyServices(p.latitude, p.longitude);
-      return;
-    }
-
-    final lastLat = _nearbyServices.first['latitude'] as double? ?? p.latitude;
-    final lastLng = _nearbyServices.first['longitude'] as double? ?? p.longitude;
-    final moved = Geolocator.distanceBetween(lastLat, lastLng, p.latitude, p.longitude);
-    if (moved > 200) {
-      await _loadNearbyServices(p.latitude, p.longitude);
-    }
-  }
-
-  Future<void> _loadNearbyServices(double lat, double lng) async {
-    try {
-      final services = EmergencyLocationService.getNearbyServices(userLatitude: lat, userLongitude: lng, maxResults: 8);
-      setState(() {
-        _nearbyServices = services.map((s) => Map<String, dynamic>.from(s)).toList();
-      });
-      _updateMarkers();
-    } catch (e) {
-      debugPrint('Error loading nearby services: $e');
-    }
+    } catch (_) {}
   }
 
   void _generateSampleNearbyServices(double lat, double lng) {
@@ -286,7 +250,10 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _buildBottomList() {
     final list = _nearbyServices
-        .map((s) => {'data': s, 'distance': _distanceKmToService(s)})
+        .map((s) => {
+              'data': s,
+              'distance': _distanceKmToService(s),
+            })
         .toList();
 
     list.sort((a, b) => (a['distance'] as double).compareTo(b['distance'] as double));
@@ -378,91 +345,42 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // UI layout: full screen map with overlay search and bottom list
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Google Map (fills background)
-            Positioned.fill(
-              child: GoogleMap(
-                initialCameraPosition: _initialCamera,
-                myLocationEnabled: true,
-                myLocationButtonEnabled: false,
-                markers: Set<Marker>.of(_markers.values),
-                onMapCreated: (controller) {
-                  if (!_mapController.isCompleted) {
-                    _mapController.complete(controller);
-                  }
-                  if (_currentPosition != null) {
-                    controller.moveCamera(CameraUpdate.newLatLngZoom(
-                      LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                      15,
-                    ));
-                  }
-                },
-              ),
-            ),
-
-            // Top search bar
-            Positioned(
-              left: 16,
-              right: 16,
-              top: 12,
-              child: Material(
-                elevation: 6,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).inputDecorationTheme.fillColor ?? Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, color: Color(0xFF6B7280)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          focusNode: _searchFocus,
-                          textInputAction: TextInputAction.search,
-                          decoration: const InputDecoration(
-                            hintText: 'Search places or addresses',
-                            border: InputBorder.none,
-                            isCollapsed: true,
-                          ),
-                          onSubmitted: (_) => _onSearchChanged(),
-                        ),
-                      ),
-                      if (_searchController.text.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.clear, color: Color(0xFF6B7280)),
-                          onPressed: () {
-                            setState(() {
-                              _searchController.clear();
-                              _placeSuggestions = [];
-                            });
-                          },
-                        ),
-                    ],
+      appBar: AppBar(
+        title: const Text('Nearby Emergency Services'),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _searchController,
+                  focusNode: _searchFocus,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'Search places or addresses',
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              setState(() {
+                                _searchController.clear();
+                                _placeSuggestions = [];
+                              });
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
-              ),
-            ),
-
-            // Place suggestions (overlay)
-            if (_placeSuggestions.isNotEmpty)
-              Positioned(
-                left: 14,
-                right: 18,
-                top: 72,
-                child: Material(
-                  elevation: 6,
-                  borderRadius: BorderRadius.circular(12),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 220),
+                if (_placeSuggestions.isNotEmpty)
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    margin: const EdgeInsets.only(top: 6),
+                    decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)]),
                     child: ListView.separated(
                       shrinkWrap: true,
                       itemCount: _placeSuggestions.length,
@@ -476,48 +394,44 @@ class _MapScreenState extends State<MapScreen> {
                       },
                     ),
                   ),
-                ),
-              ),
-
-            // Bottom horizontal services list (floating panel)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 75, // above bottom navigation
-              child: SizedBox(
-                height: 160,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: _buildBottomList(),
-                ),
-              ),
+              ],
             ),
-
-            // Floating Action Button to center on user
-            Positioned(
-              right: 60,
-              bottom: 20,
-              child: FloatingActionButton(
-                onPressed: () async {
-                  if (_currentPosition != null) {
-                    await _moveCamera(LatLng(_currentPosition!.latitude, _currentPosition!.longitude));
-                  } else {
-                    await _initLocation();
-                  }
-                },
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                child: const Icon(Icons.my_location, color: Colors.white),
-              ),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                GoogleMap(
+                  initialCameraPosition: _initialCamera,
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  markers: Set<Marker>.of(_markers.values),
+                  onMapCreated: (controller) {
+                    if (!_mapController.isCompleted) {
+                      _mapController.complete(controller);
+                    }
+                    if (_currentPosition != null) {
+                      controller.moveCamera(CameraUpdate.newLatLngZoom(
+                        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                        15,
+                      ));
+                    }
+                  },
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    color: Colors.transparent,
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildBottomList(),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-      // Use the app's shared BottomNavigation widget so navigation is consistent.
-      bottomNavigationBar: BottomNavigation(
-        currentIndex: 3, // Map screen index in MainApp
-        onNavigate: widget.onNavigate ?? (_) {},
+          ),
+        ],
       ),
     );
   }
 }
-
