@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/emergency_contact_service.dart';
+import '../services/integrated_offline_emergency_service.dart';
 import '../services/enhanced_sos_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'chat_screen.dart';
 import 'dart:async';
 import '../models/user.dart';
 import '../widgets/bottom_navigation.dart';
@@ -26,6 +29,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
   List<String> _contactsNotified = [];
   List<EmergencyContact> _emergencyContacts = [];
   bool _isLoadingContacts = true;
+  StreamSubscription<List<OfflineEmergencyContact>>? _contactsSubscription;
   Timer? _timer;
 
   @override
@@ -33,6 +37,40 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
     super.initState();
     _loadEmergencyContacts();
     _loadTimerFromSettings();
+  }
+
+  /// Make a phone call
+  Future<void> _callContact(String phoneNumber) async {
+    try {
+      final uri = Uri(scheme: 'tel', path: phoneNumber);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot make phone calls on this device')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error making call: $e')));
+    }
+  }
+
+  /// Open SMS composer
+  Future<void> _openSms(String phoneNumber) async {
+    try {
+      final uri = Uri(scheme: 'sms', path: phoneNumber);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot open SMS app on this device')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error opening SMS app: $e')));
+    }
+  }
+
+  /// Open in-app chat
+  void _openChat(EmergencyContact contact) {
+    final id = contact.id.isNotEmpty ? contact.id : contact.phone;
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => ChatScreen(contactId: id, contactName: contact.name, contactPhone: contact.phone)));
   }
 
   Future<void> _loadTimerFromSettings() async {
@@ -54,10 +92,27 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
   /// Load emergency contacts from MongoDB
   Future<void> _loadEmergencyContacts() async {
     try {
-      final contacts = await EmergencyContactService.getAllContacts();
-      setState(() {
-        _emergencyContacts = contacts;
-        _isLoadingContacts = false;
+      // Subscribe to integrated offline emergency service for realtime updates
+      final service = IntegratedOfflineEmergencyService.instance;
+      await service.initialize();
+
+      // Initial load from offline DB (or API via wrapper)
+      final offline = await service.getAllEmergencyContacts();
+      if (mounted) {
+        setState(() {
+          _emergencyContacts = offline.map((o) => EmergencyContact.fromOffline(o)).toList();
+          _isLoadingContacts = false;
+        });
+      }
+
+      // Listen for updates
+      _contactsSubscription = service.contactsStream.listen((contacts) {
+        if (mounted) {
+          setState(() {
+            _emergencyContacts = contacts.map((o) => EmergencyContact.fromOffline(o)).toList();
+            _isLoadingContacts = false;
+          });
+        }
       });
     } catch (e) {
       setState(() {
@@ -66,7 +121,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to load emergency contacts: $e'),
+            content:   Text('Failed to load emergency contacts: $e'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -77,6 +132,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _contactsSubscription?.cancel();
     super.dispose();
   }
 
@@ -202,7 +258,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
         
       /// Header
           Container(
-            color: const Color(0xFFEF4444),
+            color: Theme.of(context).colorScheme.error,
             padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -362,70 +418,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
 
                       SizedBox(height: 16),
 
-                      // Current Location
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.location_on, color: Color(0xFF3B82F6), size: 20),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Your Current Location',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 12),
-                              Text(
-                                '123 Main Street, Downtown',
-                                style: TextStyle(fontSize: 14),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Coordinates: 40.7128° N, 74.0060° W',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Icon(Icons.access_time, size: 16, color: Colors.grey.shade600),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Location updated: Just now',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(height: 16),
+                      // Current Location removed as requested
 
                       // Emergency Contacts Preview
                       Container(
@@ -462,10 +455,10 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
                               Column(
                                 children: _emergencyContacts.map((contact) {
                                   return Container(
-                                    margin: EdgeInsets.only(bottom: 8),
-                                    padding: EdgeInsets.all(8),
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: Colors.grey.shade50,
+                                      color: Theme.of(context).colorScheme.surface,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Row(

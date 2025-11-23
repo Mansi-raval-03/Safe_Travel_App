@@ -248,26 +248,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    // Only show the four requested quick actions in a 2x2 grid
     final quickActions = [
-      {
-        'title': 'Start Navigation',
-        'description': 'Get safest route to your destination',
-        'icon': Icons.map_rounded,
-        'color': const Color(0xFF6366F1),
-        'action': () => widget.onNavigate(3),
-      },
-      {
-        'title': 'Emergency SOS',
-        'description': 'Quick access to emergency services',
-        'icon': Icons.shield_rounded,
-        'color': const Color(0xFFEF4444),
-        'action': () => widget.onNavigate(4),
-      },
       {
         'title': 'Fake Call',
         'description': 'Simulate incoming call for safety',
         'icon': Icons.phone_in_talk,
-        'color': const Color(0xFF10B981),
+        'color': const Color(0xFF6366F1),
         'action': _handleFakeCall,
       },
       {
@@ -278,22 +265,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'action': _handleSirenToggle,
       },
       {
-        'title': 'Emergency Contacts',
-        'description': 'Manage your emergency contacts',
-        'icon': Icons.people_rounded,
-        'color': const Color(0xFF10B981),
-        'action': () => widget.onNavigate(5),
+        'title': 'Call 911',
+        'description': 'Call local emergency number',
+        'icon': Icons.local_phone,
+        'color': const Color(0xFF06B6D4),
+        'action': () {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Calling emergency number...')));
+        },
       },
       {
-        'title': 'Profile',
-        'description': 'View and edit your profile',
-        'icon': Icons.person_rounded,
-        'color': const Color(0xFF8B5CF6),
-        'action': () => widget.onNavigate(7),
+        'title': 'Share Location',
+        'description': 'Share your current location',
+        'icon': Icons.share_location,
+        'color': const Color(0xFF10B981),
+        'action': () {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sharing location...')));
+        },
       },
     ];
 
-    final Size _screenSize = MediaQuery.of(context).size;
     final double _scale = Responsive.scale(context);
 
     return Scaffold(
@@ -498,12 +488,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         child: _buildActionCard(action, index),
                       );
                     }, childCount: quickActions.length),
-                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: _screenSize.width > 900
-                          ? 280
-                          : _screenSize.width > 700
-                              ? 230
-                              : 180,
+                    // Fixed 2-column layout for the 2x2 grid (responsive spacing preserved)
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
                       crossAxisSpacing: Responsive.s(context, 13),
                       mainAxisSpacing: Responsive.s(context, 13),
                       childAspectRatio: 1.0,
@@ -519,13 +506,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
 
-                // Safety Status Card
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(Responsive.s(context, 24)),
-                    child: _buildSafetyStatusCard(),
-                  ),
-                ),
+                // Safety Status removed per design request
 
                 // Bottom padding
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),

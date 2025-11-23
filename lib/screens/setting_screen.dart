@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../widgets/bottom_navigation.dart';
 import '../services/auto_sync_auth_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/services.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Function(int) onNavigate;
@@ -24,10 +26,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _locationSharingEnabled = true;
   bool _soundAlertsEnabled = true;
   bool _vibrationEnabled = true;
-  bool _offlineModeEnabled = true;
+  // removed offline mode setting per recent changes
   double _autoSOSDelay = 10.0;
   String _emergencySound = 'siren';
-  String _locationAccuracy = 'high';
+  // GPS accuracy removed from settings
 
   Map<String, dynamic> _syncStatus = {
     'isInitialized': false,
@@ -38,6 +40,8 @@ class _SettingsScreenState extends State<SettingsScreen>
   // Animation controllers
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
+  late AudioPlayer _audioPlayer;
+  String? _playingSound;
 
   @override
   void initState() {
@@ -58,6 +62,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
 
     _fadeController.forward();
+    _audioPlayer = AudioPlayer();
+    _audioPlayer.onPlayerComplete.listen((_) {
+      setState(() => _playingSound = null);
+    });
   }
 
   Future<void> _loadSettings() async {
@@ -67,10 +75,9 @@ class _SettingsScreenState extends State<SettingsScreen>
       _locationSharingEnabled = prefs.getBool('locationSharing') ?? true;
       _soundAlertsEnabled = prefs.getBool('soundAlerts') ?? true;
       _vibrationEnabled = prefs.getBool('vibration') ?? true;
-      _offlineModeEnabled = prefs.getBool('offlineMode') ?? true;
       _autoSOSDelay = prefs.getDouble('autoSOSDelay') ?? 10.0;
       _emergencySound = prefs.getString('emergencySound') ?? 'siren';
-      _locationAccuracy = prefs.getString('locationAccuracy') ?? 'high';
+      // locationAccuracy preference removed
     });
   }
 
@@ -99,6 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   void dispose() {
     _fadeController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -132,8 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          _buildQuickActionsGrid(),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 4),
                           _buildEmergencySettingsCard(),
                           const SizedBox(height: 16),
                           _buildLocationPrivacyCard(),
@@ -204,102 +211,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  Widget _buildQuickActionsGrid() {
-    final quickActions = [
-      {
-        'title': 'Profile',
-        'icon': Icons.person_rounded,
-        'color': const Color(0xFF6366F1),
-        'onTap': () => widget.onNavigate(7),
-      },
-      {
-        'title': 'Emergency',
-        'icon': Icons.shield_rounded,
-        'color': const Color(0xFFEF4444),
-        'onTap': () => widget.onNavigate(5),
-      },
-      {
-        'title': 'Map',
-        'icon': Icons.map_rounded,
-        'color': const Color(0xFF10B981),
-        'onTap': () => widget.onNavigate(3),
-      },
-      {
-        'title': 'Home',
-        'icon': Icons.home_rounded,
-        'color': const Color(0xFF06B6D4),
-        'onTap': () => widget.onNavigate(2),
-      },
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.85,
-      ),
-      itemCount: quickActions.length,
-      itemBuilder: (context, index) {
-        final action = quickActions[index];
-        return _buildQuickActionCard(
-          action['title'] as String,
-          action['icon'] as IconData,
-          action['color'] as Color,
-          action['onTap'] as VoidCallback,
-        );
-      },
-    );
-  }
-
-  Widget _buildQuickActionCard(
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 2,
-      shadowColor: color.withOpacity(0.3),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1F2937),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // Quick actions removed from Settings per request.
+  
 
   Widget _buildEmergencySettingsCard() {
     return _buildSettingsCard(
@@ -320,21 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           '${_autoSOSDelay.round()}s',
         ),
         const Divider(height: 1),
-        _buildDropdownTile(
-          'Emergency Sound',
-          'Alert sound type',
-          _emergencySound,
-          [
-            {'value': 'siren', 'label': 'Siren'},
-            {'value': 'alarm', 'label': 'Alarm'},
-            {'value': 'beep', 'label': 'Beep'},
-            {'value': 'silent', 'label': 'Silent'},
-          ],
-          (value) {
-            setState(() => _emergencySound = value);
-            _saveSetting('emergencySound', value);
-          },
-        ),
+        _buildSoundList(),
       ],
     );
   }
@@ -354,33 +253,111 @@ class _SettingsScreenState extends State<SettingsScreen>
             _saveSetting('locationSharing', value);
           },
         ),
-        const Divider(height: 1),
-        _buildDropdownTile(
-          'GPS Accuracy',
-          'Location precision level',
-          _locationAccuracy,
-          [
-            {'value': 'high', 'label': 'High (1-3m)'},
-            {'value': 'medium', 'label': 'Medium (10m)'},
-            {'value': 'low', 'label': 'Low (100m)'},
-          ],
-          (value) {
-            setState(() => _locationAccuracy = value);
-            _saveSetting('locationAccuracy', value);
-          },
-        ),
-        const Divider(height: 1),
-        _buildSwitchTile(
-          'Offline Mode',
-          'Enable features without internet',
-          _offlineModeEnabled,
-          (value) {
-            setState(() => _offlineModeEnabled = value);
-            _saveSetting('offlineMode', value);
-          },
-        ),
       ],
     );
+  }
+
+  Widget _buildSoundList() {
+    final sounds = [
+      {'value': 'siren', 'label': 'Siren', 'file': 'assets/sounds/police-siren-397963.mp3'},
+      {'value': 'alarm', 'label': 'Alarm', 'file': null},
+      {'value': 'beep', 'label': 'Beep', 'file': null},
+      {'value': 'silent', 'label': 'Silent', 'file': null},
+    ];
+
+    return Column(
+      children: sounds.map((s) {
+        final value = s['value']?.toString() ?? '';
+        final label = s['label']?.toString() ?? '';
+        final file = s['file'] is String ? s['file'] as String : null;
+
+        return Column(
+          children: [
+            _buildSoundOption(value, label, file),
+            const Divider(height: 1),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSoundOption(String value, String label, String? file) {
+    final isSelected = _emergencySound == value;
+    final isPlaying = _playingSound == value;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  file != null ? 'Tap play to preview' : 'Not available locally',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(isPlaying ? Icons.stop_circle : Icons.play_circle_fill, color: isPlaying ? const Color(0xFFEF4444) : const Color(0xFF6366F1), size: 30),
+                onPressed: () async {
+                  if (file == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sound not available locally')));
+                    return;
+                  }
+                  if (isPlaying) {
+                    await _audioPlayer.stop();
+                    setState(() => _playingSound = null);
+                    return;
+                  }
+                  await _previewSound(file, value);
+                },
+              ),
+              IconButton(
+                icon: Icon(isSelected ? Icons.check_circle : Icons.radio_button_unchecked, color: isSelected ? const Color(0xFF10B981) : const Color(0xFF9CA3AF)),
+                onPressed: () {
+                  setState(() => _emergencySound = value);
+                  _saveSetting('emergencySound', value);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Selected: $label')));
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _previewSound(String filePath, String value) async {
+    try {
+      // verify asset exists
+      await rootBundle.load(filePath);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sound asset not found')));
+      return;
+    }
+
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(AssetSource(filePath));
+      setState(() => _playingSound = value);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error playing sound')));
+    }
   }
 
   Widget _buildNotificationsCard() {

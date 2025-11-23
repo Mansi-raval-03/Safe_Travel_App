@@ -67,6 +67,8 @@ dependencies:
   firebase_core: ^2.13.0
   firebase_messaging: ^14.4.0
   another_telephony: ^0.4.1
+  flutter_polyline_points: ^3.1.0
+  # If you prefer rxdart for debounce you can add it; current implementation uses Timer-based debounce
 
   flutter_native_splash: any
 dev_dependencies:

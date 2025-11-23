@@ -130,6 +130,29 @@ class LocationService {
     }
   }
 
+  /// Compatibility wrapper: request permission (old API)
+  Future<bool> requestPermission() async {
+    return await _requestLocationPermissions();
+  }
+
+  /// Compatibility wrapper: get current position (old API returned non-nullable Position)
+  Future<Position> getCurrentPosition() async {
+    final p = await getCurrentLocation();
+    if (p == null) throw Exception('Location not available');
+    return p;
+  }
+
+  /// Compatibility wrapper: get position stream with options
+  Stream<Position> getPositionStream({int distanceFilterMeters = 50, LocationAccuracy accuracy = LocationAccuracy.best}) {
+    final locSettings = LocationSettings(accuracy: accuracy, distanceFilter: distanceFilterMeters);
+    return Geolocator.getPositionStream(locationSettings: locSettings);
+  }
+
+  /// Open app settings (compat wrapper)
+  Future<bool> openAppSettings() async {
+    return await Geolocator.openAppSettings();
+  }
+
   /// Get current location once
   Future<Position?> getCurrentLocation() async {
     try {
@@ -365,9 +388,9 @@ class LocationService {
       final id = await offlineDb.storeLocationData(_currentPosition!);
       
       if (id > 0) {
-        print('💾 Location stored to database with ID: $id');
-        print('📍 Stored position: ${_currentPosition!.latitude.toStringAsFixed(6)}, ${_currentPosition!.longitude.toStringAsFixed(6)}');
-        print('🎯 Accuracy: ${_currentPosition!.accuracy.toStringAsFixed(1)}m at ${DateTime.fromMillisecondsSinceEpoch(_currentPosition!.timestamp.millisecondsSinceEpoch)}');
+      print('💾 Location stored to database with ID: $id');
+      print('📍 Stored position: ${_currentPosition!.latitude.toStringAsFixed(6)}, ${_currentPosition!.longitude.toStringAsFixed(6)}');
+      print('🎯 Accuracy: ${_currentPosition!.accuracy.toStringAsFixed(1)}m at ${DateTime.fromMillisecondsSinceEpoch(_currentPosition!.timestamp.millisecondsSinceEpoch)}');
       } else {
         print('❌ Failed to store location to database');
       }

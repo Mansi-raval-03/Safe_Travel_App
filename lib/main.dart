@@ -495,6 +495,7 @@ class _MainAppState extends State<MainApp> {
         user: _user,
         onUpdateUser: _updateUser,
         onNavigate: _navigateToScreen,
+        onSignout: _handleSignout,
       );
     case 8:
       return LocationStorageDemoScreen();

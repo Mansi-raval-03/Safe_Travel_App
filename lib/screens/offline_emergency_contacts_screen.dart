@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'chat_screen.dart';
 import '../services/integrated_offline_emergency_service.dart';
 import '../widgets/bottom_navigation.dart';
 
@@ -96,10 +97,8 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Contact "${result.name}" added successfully!'),
-              backgroundColor: Colors.green,
               action: SnackBarAction(
                 label: 'UNDO',
-                textColor: Colors.white,
                 onPressed: () => _deleteContact(result.id!),
               ),
             ),
@@ -110,7 +109,6 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Failed to add contact: $e'),
-              backgroundColor: Colors.red,
             ),
           );
         }
@@ -128,7 +126,6 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Contact "${result.name}" updated successfully!'),
-              backgroundColor: Colors.green,
             ),
           );
         }
@@ -137,7 +134,6 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Failed to update contact: $e'),
-              backgroundColor: Colors.red,
             ),
           );
         }
@@ -153,7 +149,6 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Contact deleted successfully!'),
-            backgroundColor: Colors.orange,
           ),
         );
       }
@@ -162,7 +157,6 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to delete contact: $e'),
-            backgroundColor: Colors.red,
           ),
         );
       }
@@ -191,19 +185,19 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
                     padding: const EdgeInsets.all(8),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade100,
+                      color: Theme.of(context).colorScheme.surfaceVariant,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange),
+                      border: Border.all(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08)),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.wifi_off, color: Colors.orange),
-                        SizedBox(width: 8),
+                        Icon(Icons.wifi_off, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Offline Mode - Contact saved locally',
-                            style: TextStyle(
-                              color: Colors.orange,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -276,7 +270,6 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Name and phone number are required'),
-                      backgroundColor: Colors.red,
                     ),
                   );
                   return;
@@ -323,46 +316,25 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
     }
   }
 
-  /// Send SMS to contact
-  Future<void> _sendSMS(String phoneNumber) async {
-    try {
-      final uri = Uri(
-        scheme: 'sms',
-        path: phoneNumber,
-        queryParameters: {'body': 'Hello! This is a test message from Safe Travel App.'},
-      );
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Cannot send SMS on this device')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error sending SMS: $e')),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: const Text('Emergency Contacts'),
-        backgroundColor: Colors.red.shade600,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         actions: [
           // Network status indicator
           Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: _isOnline ? Colors.green : Colors.orange,
+              color: _isOnline ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.surfaceVariant,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -371,16 +343,14 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
                 Icon(
                   _isOnline ? Icons.wifi : Icons.wifi_off,
                   size: 16,
-                  color: Colors.white,
+                  color: _isOnline ? Theme.of(context).colorScheme.onSecondary : Theme.of(context).colorScheme.onSurface,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   _isOnline ? 'Online' : 'Offline',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600,
+                    color: _isOnline ? Theme.of(context).colorScheme.onSecondary : Theme.of(context).colorScheme.onSurface,
+                    ),
                 ),
               ],
             ),
@@ -389,12 +359,12 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
       ),
       body: _buildBody(),
       bottomNavigationBar: BottomNavigation(
-        currentIndex: 5,
+        currentIndex: 10,
         onNavigate: widget.onNavigate ?? (int idx) {},
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addContact,
-        backgroundColor: Colors.red.shade600,
+        backgroundColor: Theme.of(context).primaryColor,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -422,12 +392,12 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
             Icon(
               Icons.error_outline,
               size: 64,
-              color: Colors.red.shade400,
+              color: Theme.of(context).colorScheme.error,
             ),
             const SizedBox(height: 16),
             Text(
               'Error: $_errorMessage',
-              style: const TextStyle(fontSize: 16),
+              style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -454,24 +424,17 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
             Icon(
               Icons.contacts,
               size: 80,
-              color: Colors.grey.shade400,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
             ),
             const SizedBox(height: 24),
             Text(
               'No Emergency Contacts',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade600,
-              ),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'Add emergency contacts to receive SOS alerts',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade500,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -480,8 +443,8 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
               icon: const Icon(Icons.add),
               label: const Text('Add First Contact'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade600,
-                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
@@ -499,16 +462,16 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              color: Colors.orange.shade100,
+              color: Theme.of(context).colorScheme.surfaceVariant,
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, color: Colors.orange),
+                  Icon(Icons.info_outline, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Working offline - contacts saved locally and will sync when online',
-                      style: TextStyle(
-                        color: Colors.orange,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -523,11 +486,7 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
             padding: const EdgeInsets.all(16),
             child: Text(
               '${_contacts.length} Emergency Contact${_contacts.length == 1 ? '' : 's'}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey.shade600,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
           
@@ -558,7 +517,7 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: contact.isPrimary ? Colors.red.shade600 : Colors.blue.shade600,
+                  backgroundColor: contact.isPrimary ? Theme.of(context).primaryColor : Theme.of(context).colorScheme.secondary,
                   child: Text(
                     contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?',
                     style: const TextStyle(
@@ -577,23 +536,20 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
                           Expanded(
                             child: Text(
                               contact.name,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                             ),
                           ),
                           if (contact.isPrimary)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.red.shade600,
+                                color: Theme.of(context).primaryColor,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'PRIMARY',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Theme.of(context).colorScheme.onPrimary,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -604,30 +560,20 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
                       const SizedBox(height: 4),
                       Text(
                         contact.phone,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey.shade600,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                       ),
                       if (contact.email?.isNotEmpty == true) ...[
                         const SizedBox(height: 2),
                         Text(
                           contact.email!,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade500,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                         ),
                       ],
                       if (contact.relationship?.isNotEmpty == true) ...[
                         const SizedBox(height: 2),
                         Text(
                           contact.relationship!,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade500,
-                            fontStyle: FontStyle.italic,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontStyle: FontStyle.italic),
                         ),
                       ],
                     ],
@@ -652,11 +598,11 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
                         title: Text('Edit'),
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: ListTile(
-                        leading: Icon(Icons.delete, color: Colors.red),
-                        title: Text('Delete'),
+                        leading: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
+                        title: const Text('Delete'),
                       ),
                     ),
                   ],
@@ -672,18 +618,53 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
                     icon: const Icon(Icons.call, size: 18),
                     label: const Text('Call'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
-                      foregroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      foregroundColor: Theme.of(context).colorScheme.onSecondary,
                     ),
                   ),
                 ),
-                // SMS button removed to prevent SOS sending from contacts page
+                const SizedBox(width: 8),
+                // Chat button
+                IconButton(
+                  onPressed: () => _openChat(contact),
+                  icon: Icon(Icons.chat, color: Theme.of(context).colorScheme.primary),
+                  tooltip: 'Chat',
+                ),
+                const SizedBox(width: 4),
+                // SMS button
+                IconButton(
+                  onPressed: () => _openSms(contact.phone),
+                  icon: Icon(Icons.sms, color: Theme.of(context).colorScheme.primary),
+                  tooltip: 'SMS',
+                ),
               ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// Open SMS composer with phone number pre-filled
+  Future<void> _openSms(String phoneNumber) async {
+    try {
+      final uri = Uri(scheme: 'sms', path: phoneNumber);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot open SMS app on this device')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error opening SMS app: $e')));
+    }
+  }
+
+  /// Open in-app chat for contact
+  void _openChat(OfflineEmergencyContact contact) {
+    final id = contact.id != null ? contact.id!.toString() : contact.phone;
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => ChatScreen(contactId: id, contactName: contact.name, contactPhone: contact.phone),
+    ));
   }
 
   /// Show delete confirmation dialog
@@ -701,8 +682,8 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             child: const Text('Delete'),
           ),

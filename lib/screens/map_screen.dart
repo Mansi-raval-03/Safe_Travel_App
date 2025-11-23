@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 // Repo services
 import '../services/location_service.dart';
 import '../services/emergency_location_service.dart';
+import '../services/google_places_service.dart';
+import '../models/place_model.dart';
 import '../widgets/bottom_navigation.dart';
 
 // Placeholder: set at runtime using secure config (do NOT commit keys).
@@ -103,13 +105,45 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _loadNearbyServices(double lat, double lng) async {
     try {
-      final services = EmergencyLocationService.getNearbyServices(userLatitude: lat, userLongitude: lng, maxResults: 8);
+      // Use Google Places Nearby Search to fetch real nearby emergency services
+      final types = ['hospital', 'police', 'gas_station'];
+      final List<Map<String, dynamic>> aggregated = [];
+
+      for (final t in types) {
+        final results = await GooglePlacesService.nearbySearch(lat: lat, lng: lng, type: t, radiusMeters: 3000);
+        for (final p in results) {
+          final d = Geolocator.distanceBetween(lat, lng, p.location.latitude, p.location.longitude) / 1000.0; // km
+          aggregated.add({
+            'name': p.name,
+            'type': t,
+            'latitude': p.location.latitude,
+            'longitude': p.location.longitude,
+            'address': p.address ?? '',
+            'phone': '',
+            'distance_km': d,
+            'place_id': p.placeId,
+          });
+        }
+      }
+
+      // dedupe by place_id
+      final mapById = <String, Map<String, dynamic>>{};
+      for (final a in aggregated) {
+        final id = a['place_id'] as String? ?? '${a['name']}_${a['latitude']}_${a['longitude']}';
+        mapById[id] = a;
+      }
+
+      final list = mapById.values.toList();
+      list.sort((a, b) => (a['distance_km'] as double).compareTo(b['distance_km'] as double));
+
       setState(() {
-        _nearbyServices = services.map((s) => Map<String, dynamic>.from(s)).toList();
+        _nearbyServices = list.take(12).map((s) => Map<String, dynamic>.from(s)).toList();
       });
       _updateMarkers();
     } catch (e) {
       debugPrint('Error loading nearby services: $e');
+      // Fallback to sample data if Places API fails
+      _generateSampleNearbyServices(lat, lng);
     }
   }
 

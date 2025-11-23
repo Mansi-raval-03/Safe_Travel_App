@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import 'integrated_offline_emergency_service.dart';
+import 'contact_adapter.dart';
 
 class EmergencyContactService {
   static String get baseUrl => ApiConfig.currentBaseUrl;
@@ -36,32 +38,43 @@ class EmergencyContactService {
   /// Get all emergency contacts for the authenticated user
   static Future<List<EmergencyContact>> getAllContacts() async {
     try {
+      // Prefer local offline contacts (single source of truth while migrating)
+      try {
+        final local = await IntegratedOfflineEmergencyService.instance.getAllEmergencyContacts();
+        if (local.isNotEmpty) {
+          // Map to legacy model for existing callers
+          return local.map((o) => EmergencyContact.fromOffline(o)).toList();
+        }
+      } catch (e) {
+        // Ignore local lookup failures and fall back to API
+        print('⚠️ Failed to read local contacts: $e');
+      }
+
       print('🔄 Fetching emergency contacts from API...');
       print('🌐 API URL: $baseUrl/emergency-contacts');
-      
+
       final headers = await _getAuthHeaders();
       print('🔑 Auth headers: ${headers.keys.join(', ')}');
-      
+
       final response = await http.get(
         Uri.parse('$baseUrl/emergency-contacts'),
         headers: headers,
       );
-      
+
       print('📡 API Response Status: ${response.statusCode}');
       print('📄 API Response Body: ${response.body}');
-      
+
       final responseData = _handleResponse(response);
       final List<dynamic> contactsJson = responseData['data']['contacts'];
-      
+
       print('📊 Raw contacts data: $contactsJson');
-      
+
       final contacts = contactsJson
           .map((json) => EmergencyContact.fromJson(json))
           .toList();
-          
+
       print('✅ Successfully parsed ${contacts.length} emergency contacts');
       return contacts;
-          
     } catch (e) {
       print('Error getting emergency contacts: $e');
       throw Exception('Failed to load emergency contacts: $e');
@@ -91,7 +104,17 @@ class EmergencyContactService {
       );
       
       final responseData = _handleResponse(response);
-      return EmergencyContact.fromJson(responseData['data']['contact']);
+      final contact = EmergencyContact.fromJson(responseData['data']['contact']);
+
+      // Also ensure the contact is available offline (best-effort)
+      try {
+        final offline = contact.toOffline();
+        await IntegratedOfflineEmergencyService.instance.addEmergencyContact(offline);
+      } catch (e) {
+        print('⚠️ Failed to cache contact locally: $e');
+      }
+
+      return contact;
       
     } catch (e) {
       print('Error adding emergency contact: $e');
@@ -125,7 +148,31 @@ class EmergencyContactService {
       );
       
       final responseData = _handleResponse(response);
-      return EmergencyContact.fromJson(responseData['data']['contact']);
+      final updated = EmergencyContact.fromJson(responseData['data']['contact']);
+
+      // Best-effort: update local cache to keep offline store in sync
+      try {
+        final offline = updated.toOffline();
+        final service = IntegratedOfflineEmergencyService.instance;
+        final localList = await service.getAllEmergencyContacts();
+        // Try to find a match by phone or name
+        final match = localList.firstWhere(
+          (c) => c.phone == updated.phone || c.name == updated.name,
+          orElse: () => OfflineEmergencyContact(id: null, name: '', phone: '', createdAt: DateTime.now().millisecondsSinceEpoch, updatedAt: DateTime.now().millisecondsSinceEpoch),
+        );
+
+        if (match.id != null) {
+          // Preserve id on update
+          final toUpdate = offline.copyWith(id: match.id);
+          await service.updateEmergencyContact(toUpdate);
+        } else {
+          await service.addEmergencyContact(offline);
+        }
+      } catch (e) {
+        print('⚠️ Failed to sync updated contact to local cache: $e');
+      }
+
+      return updated;
       
     } catch (e) {
       print('Error updating emergency contact: $e');
@@ -137,12 +184,42 @@ class EmergencyContactService {
   static Future<void> deleteContact(String contactId) async {
     try {
       final headers = await _getAuthHeaders();
+
+      // Try to fetch contact details before deletion to sync local cache
+      String? phoneToRemove;
+      try {
+        final getResp = await http.get(
+          Uri.parse('$baseUrl/emergency-contacts/$contactId'),
+          headers: headers,
+        );
+        final getData = _handleResponse(getResp);
+        if (getData['data'] != null && getData['data']['contact'] != null) {
+          phoneToRemove = getData['data']['contact']['phone'];
+        }
+      } catch (e) {
+        print('⚠️ Could not fetch contact details before delete: $e');
+      }
+
       final response = await http.delete(
         Uri.parse('$baseUrl/emergency-contacts/$contactId'),
         headers: headers,
       );
-      
+
       _handleResponse(response);
+
+      // Best-effort: delete local cached contact(s) with matching phone
+      if (phoneToRemove != null && phoneToRemove.trim().isNotEmpty) {
+        try {
+          final service = IntegratedOfflineEmergencyService.instance;
+          final local = await service.getAllEmergencyContacts();
+          final matches = local.where((c) => c.phone == phoneToRemove).toList();
+          for (final m in matches) {
+            if (m.id != null) await service.deleteEmergencyContact(m.id!);
+          }
+        } catch (e) {
+          print('⚠️ Failed to delete local cached contact(s): $e');
+        }
+      }
       
     } catch (e) {
       print('Error deleting emergency contact: $e');
@@ -245,6 +322,35 @@ class EmergencyContact {
       updatedAt: json['updatedAt'] != null 
           ? DateTime.parse(json['updatedAt']) 
           : null,
+    );
+  }
+
+  /// Convert from an offline contact to the legacy/remote model
+  factory EmergencyContact.fromOffline(OfflineEmergencyContact offline) {
+    final String id = offline.id != null ? offline.id!.toString() : 'local-${offline.createdAt}';
+    return EmergencyContact(
+      id: id,
+      name: offline.name,
+      phone: offline.phone,
+      relationship: offline.relationship ?? '',
+      isPrimary: offline.isPrimary,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(offline.createdAt),
+      updatedAt: DateTime.fromMillisecondsSinceEpoch(offline.updatedAt),
+    );
+  }
+
+  /// Convert legacy/remote model to offline model for caching
+  OfflineEmergencyContact toOffline() {
+    return OfflineEmergencyContact(
+      id: null,
+      name: name,
+      phone: phone,
+      email: null,
+      relationship: relationship,
+      isPrimary: isPrimary,
+      isActive: true,
+      createdAt: createdAt?.millisecondsSinceEpoch,
+      updatedAt: updatedAt?.millisecondsSinceEpoch,
     );
   }
 

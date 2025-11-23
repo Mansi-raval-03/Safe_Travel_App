@@ -24,7 +24,8 @@ class BottomNavigation extends StatelessWidget {
           case 4:
             return 3; // SOS screen
           case 5:
-            return 4; // Contacts screen
+          case 10:
+            return 4; // Contacts screen (support both legacy index 5 and new index 10)
           case 7:
             return 5; // Profile screen
           case 6:
@@ -59,7 +60,7 @@ class BottomNavigation extends StatelessWidget {
             1: 3, // Map
             2: 12, // Trips
             3: 4, // SOS
-            4: 5, // Contacts
+            4: 10, // Contacts -> route to OfflineEmergencyContactsScreen (screen index 10)
             5: 7, // Profile
           };
           onNavigate(screenMap[index] ?? 2);

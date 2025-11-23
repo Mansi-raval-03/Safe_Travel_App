@@ -7,6 +7,7 @@ import '../services/emergency_contact_service.dart';
 class ProfileScreen extends StatefulWidget {
   final User? user;
   final Function(User) onUpdateUser;
+  final VoidCallback onSignout;
   final Function(int) onNavigate;
 
   const ProfileScreen({
@@ -14,6 +15,7 @@ class ProfileScreen extends StatefulWidget {
     required this.user,
     required this.onUpdateUser,
     required this.onNavigate,
+    required this.onSignout,
   }) : super(key: key);
 
   @override
@@ -303,6 +305,8 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                             _buildEmergencyInfoCard(),
                             SizedBox(height: Responsive.s(context, 20)),
                             _buildQuickActionsGrid(),
+                            SizedBox(height: Responsive.s(context, 20)),
+                            _buildAboutSignOutCard(),
                             SizedBox(height: Responsive.s(context, 100)),
                           ],
                         ),
@@ -523,36 +527,8 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
 
   // Statistics Cards
   Widget _buildStatsCards() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            'Safety Score',
-            '$_safetyScore',
-            Icons.shield_outlined,
-            Color(0xFF10B981),
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            'Emergency Contacts',
-            '$_emergencyContactsCount',
-            Icons.contacts_outlined,
-            Color(0xFF3B82F6),
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            'Active Days',
-            '$_activeDays',
-            Icons.calendar_today_outlined,
-            Color(0xFF8B5CF6),
-          ),
-        ),
-      ],
-    );
+    // Emergency Contacts stat removed per request
+    return const SizedBox.shrink();
   }
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
@@ -648,6 +624,176 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
             _buildInfoRow('Allergies', _allergiesController.text.isEmpty ? 'None specified' : _allergiesController.text, Icons.warning_amber_outlined),
             _buildInfoRow('Medical Conditions', _medicalConditionsController.text.isEmpty ? 'None specified' : _medicalConditionsController.text, Icons.local_hospital_outlined),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutSignOutCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Safe Travel App v1.0.0'),
+                    backgroundColor: Color(0xFF6366F1),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF06B6D4).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.info_outline_rounded,
+                        color: Color(0xFF06B6D4),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'About',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1F2937),
+                            ),
+                          ),
+                          Text(
+                            'App version and information',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    title: const Text('Sign Out'),
+                    content: const Text('Are you sure you want to sign out?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEF4444),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Sign Out',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirm == true) {
+                  widget.onSignout();
+                }
+              },
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        color: Color(0xFFEF4444),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Sign Out',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFEF4444),
+                            ),
+                          ),
+                          Text(
+                            'Sign out from your account',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFFEF4444),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -752,12 +898,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
             crossAxisSpacing: 12,
             childAspectRatio: 1.5,
             children: [
-              _buildActionCard(
-                'Emergency Contacts',
-                Icons.contacts_outlined,
-                Color(0xFF3B82F6),
-                () => widget.onNavigate(5),
-              ),
               _buildActionCard(
                 'Safety Tips',
                 Icons.tips_and_updates_outlined,

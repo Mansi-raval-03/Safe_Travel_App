@@ -287,15 +287,16 @@ class _EnhancedOfflineSOSScreenState extends State<EnhancedOfflineSOSScreen> {
           if (widget.onNavigate != null)
             ElevatedButton(
               onPressed: () {
-              Navigator.of(context).pop();
-              widget.onNavigate!(5); // Navigate to emergency contacts
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade600,
-              foregroundColor: Colors.white,
+                Navigator.of(context).pop();
+                // Navigate to canonical Contacts screen index (10)
+                widget.onNavigate!(10);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              ),
+              child: const Text('View Contacts'),
             ),
-            child: const Text('View Contacts'),
-          ),
         ],
       ),
     );
@@ -323,15 +324,15 @@ class _EnhancedOfflineSOSScreenState extends State<EnhancedOfflineSOSScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Emergency SOS'),
-        backgroundColor: Colors.red.shade600,
-        foregroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.error,
+        foregroundColor: Theme.of(context).colorScheme.onError,
         actions: [
           // Network status indicator
           Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: _isOnline ? Colors.green : Colors.orange,
+              color: _isOnline ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.tertiaryContainer,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -340,15 +341,15 @@ class _EnhancedOfflineSOSScreenState extends State<EnhancedOfflineSOSScreen> {
                 Icon(
                   _isOnline ? Icons.wifi : Icons.wifi_off,
                   size: 16,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSecondary,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   _isOnline ? 'Online' : 'Offline',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSecondary,
+                    fontWeight: FontWeight.w600,
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],

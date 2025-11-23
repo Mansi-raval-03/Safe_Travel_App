@@ -22,6 +22,8 @@ class IntegratedOfflineEmergencyService {
 
   late final OfflineDatabaseService _dbService;
   late final LocationService _locationService;
+  bool _initialized = false;
+  Completer<void>? _initializingCompleter;
   
   // Stream controllers for real-time updates
   final _contactsController = StreamController<List<OfflineEmergencyContact>>.broadcast();
@@ -46,26 +48,43 @@ class IntegratedOfflineEmergencyService {
   
   /// Initialize the service
   Future<void> initialize() async {
+    // Fast path: already initialized
+    if (_initialized) return;
+
+    // If another caller is currently initializing, wait for it
+    if (_initializingCompleter != null) {
+      await _initializingCompleter!.future;
+      return;
+    }
+
+    _initializingCompleter = Completer<void>();
+
     try {
       print('🚀 Initializing Integrated Offline Emergency Service...');
-      
+
       // Initialize database service
       _dbService = OfflineDatabaseService.instance;
       await _dbService.database;
-      
+
       // Initialize location service
       _locationService = LocationService();
-      
+
       // Start connectivity monitoring
       await _startConnectivityMonitoring();
-      
+
       // Start periodic sync when online
       _startPeriodicSync();
-      
+      _initialized = true;
+
+      _initializingCompleter!.complete();
       print('✅ Integrated Offline Emergency Service initialized successfully');
     } catch (e) {
+      _initializingCompleter!.completeError(e);
       print('❌ Error initializing service: $e');
       rethrow;
+    } finally {
+      // Clear the completer so future attempts can initialize again if needed
+      _initializingCompleter = null;
     }
   }
   
