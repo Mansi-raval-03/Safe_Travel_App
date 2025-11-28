@@ -457,28 +457,7 @@ class _OfflineEmergencyContactsScreenState extends State<OfflineEmergencyContact
       onRefresh: _loadContacts,
       child: Column(
         children: [
-          // Info banner
-          if (!_isOnline)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              color: Theme.of(context).colorScheme.surfaceVariant,
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Working offline - contacts saved locally and will sync when online',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+       
           
           // Contacts count
           Container(

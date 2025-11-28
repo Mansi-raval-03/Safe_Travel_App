@@ -47,7 +47,7 @@
 		<true/>
 		<!-- Google Maps API Key -->
 		<key>GoogleMapsAPIKey</key>
-		<string>AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao</string>
+		<string>AIzaSyCthvrA0JDPHBJ5KCax_4nODlXxZLEnNFw</string>
 		<!-- Location permissions -->
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>This app needs access to your location to provide safety features and real-time location sharing.</string>

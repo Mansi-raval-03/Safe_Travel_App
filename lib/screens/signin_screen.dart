@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import '../utils/responsive.dart';
 import '../services/fake_call_service.dart';
 import '../services/emergency_siren_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 import 'fake_call_screen.dart';
 
 class SigninScreen extends StatefulWidget {
-  final Function(String email, String password) onSignin;
+  final Function(String email, String password, bool rememberMe) onSignin;
   final Function() onNavigateToSignup;
   final bool isLoading;
   final String? errorMessage;
@@ -28,6 +30,31 @@ class _SigninScreenState extends State<SigninScreen> {
   bool _obscurePassword = true;
   bool _rememberMe = false;
   
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedCredentials();
+  }
+
+  Future<void> _loadRememberedCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final remember = prefs.getBool('remember_me') ?? false;
+      if (remember) {
+        final savedEmail = prefs.getString('saved_email') ?? '';
+        final savedPassword = prefs.getString('saved_password') ?? '';
+        setState(() {
+          _rememberMe = true;
+          _emailController.text = savedEmail;
+          _passwordController.text = savedPassword;
+        });
+      }
+    } catch (e) {
+      // ignore errors - not critical
+      print('Failed to load remembered credentials: $e');
+    }
+  }
+  
   // Emergency services
   final FakeCallService _fakeCallService = FakeCallService();
   final EmergencySirenService _sirenService = EmergencySirenService();
@@ -39,8 +66,8 @@ class _SigninScreenState extends State<SigninScreen> {
       return;
     }
     
-    // Call signin with validation
-    widget.onSignin(_emailController.text.trim(), _passwordController.text);
+    // Call signin with validation and pass remember-me flag
+    widget.onSignin(_emailController.text.trim(), _passwordController.text, _rememberMe);
   }
 
   /// Handle fake call button press
@@ -323,7 +350,7 @@ class _SigninScreenState extends State<SigninScreen> {
             const Spacer(),
             TextButton(
               onPressed: () {
-                // TODO: Implement forgot password
+                _showForgotPasswordDialog();
               },
               child: Text(
                 'Forgot Password?',
@@ -337,6 +364,165 @@ class _SigninScreenState extends State<SigninScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  void _showForgotPasswordDialog() {
+    final TextEditingController _fpController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Forgot Password'),
+          content: TextField(
+            controller: _fpController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              hintText: 'Enter your account email',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final email = _fpController.text.trim();
+                if (email.isEmpty) return;
+
+                // Indicate processing
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Sending reset code...')),
+                );
+
+                try {
+                  final result = await AuthService.forgotPassword(email);
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(result.message)),
+                  );
+
+                  if (result.success) {
+                    Navigator.of(context).pop();
+                    // Show OTP + new password dialog
+                    _showResetPasswordDialog(email);
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Request failed: ${e.toString()}')),
+                  );
+                }
+              },
+              child: const Text('Send'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showResetPasswordDialog(String email) {
+    final TextEditingController _otpController = TextEditingController();
+    final TextEditingController _newPassController = TextEditingController();
+    final TextEditingController _confirmPassController = TextEditingController();
+    bool _obscureNew = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Enter code & new password'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('A 6-digit code was sent to $email'),
+                SizedBox(height: Responsive.s(context, 12)),
+                TextField(
+                  controller: _otpController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'OTP'),
+                ),
+                SizedBox(height: Responsive.s(context, 8)),
+                TextField(
+                  controller: _newPassController,
+                  obscureText: _obscureNew,
+                  decoration: InputDecoration(
+                    labelText: 'New password',
+                    suffixIcon: IconButton(
+                      onPressed: () => setState(() { _obscureNew = !_obscureNew; }),
+                      icon: Icon(_obscureNew ? Icons.visibility_off : Icons.visibility),
+                    ),
+                  ),
+                ),
+                SizedBox(height: Responsive.s(context, 8)),
+                TextField(
+                  controller: _confirmPassController,
+                  obscureText: _obscureNew,
+                  decoration: const InputDecoration(labelText: 'Confirm password'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  // Resend code
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Resending code...')));
+                  try {
+                    final r = await AuthService.forgotPassword(email);
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r.message)));
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Resend failed: ${e.toString()}')));
+                  }
+                },
+                child: const Text('Resend'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final otp = _otpController.text.trim();
+                  final p1 = _newPassController.text;
+                  final p2 = _confirmPassController.text;
+                  if (otp.length != 6) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a 6-digit code')));
+                    return;
+                  }
+                  if (p1.length < 6) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password must be at least 6 characters')));
+                    return;
+                  }
+                  if (p1 != p2) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+                    return;
+                  }
+
+                  // Call reset
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Updating password...')));
+                  try {
+                    final res = await AuthService.resetPassword(email, otp, p1);
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res.message)));
+                    if (res.success) Navigator.of(context).pop();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: ${e.toString()}')));
+                  }
+                },
+                child: const Text('Submit'),
+              ),
+            ],
+          );
+        });
+      }
     );
   }
 

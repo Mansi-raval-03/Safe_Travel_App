@@ -23,10 +23,14 @@ class SocketIOService {
       StreamController<Map<String, dynamic>>.broadcast();
   final StreamController<List<Map<String, dynamic>>> _nearbyUsersController = 
       StreamController<List<Map<String, dynamic>>>.broadcast();
+    // Emergency alerts stream (SOS)
+    final StreamController<Map<String, dynamic>> _emergencyAlertController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
   // Getters for streams
   Stream<Map<String, dynamic>> get userLocationStream => _userLocationController.stream;
   Stream<List<Map<String, dynamic>>> get nearbyUsersStream => _nearbyUsersController.stream;
+  Stream<Map<String, dynamic>> get emergencyAlertStream => _emergencyAlertController.stream;
 
   bool get isConnected => _socket?.connected ?? false;
 
@@ -101,7 +105,15 @@ class SocketIOService {
     // Listen for emergency alerts
     _socket!.on('emergency_alert', (data) {
       if (data is Map<String, dynamic>) {
-          _handleEmergencyAlert(Map<String, dynamic>.from(data));
+        final alert = Map<String, dynamic>.from(data);
+        // Publish to listeners first
+        try {
+          _emergencyAlertController.add(alert);
+        } catch (e) {
+          print('Failed to add emergency alert to stream: $e');
+        }
+        // Then run existing handling (sound, dialog, notification)
+        _handleEmergencyAlert(alert);
       }
     });
 
@@ -310,6 +322,7 @@ class SocketIOService {
     disconnect();
     _userLocationController.close();
     _nearbyUsersController.close();
+    _emergencyAlertController.close();
     _locationService.dispose();
   }
 }

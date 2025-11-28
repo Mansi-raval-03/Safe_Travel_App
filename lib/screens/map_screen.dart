@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -11,13 +13,12 @@ import '../services/google_places_service.dart';
 import '../models/place_model.dart';
 import '../widgets/bottom_navigation.dart';
 
-// Placeholder: set at runtime using secure config (do NOT commit keys).
-const String _kGooglePlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
+// Google Places API key is read from `GooglePlacesService.apiKey` (use --dart-define to supply it).
 
 class MapScreen extends StatefulWidget {
   final void Function(int)? onNavigate;
   final VoidCallback? onTriggerSOS;
-  /// Optional bottom navigation widget provided by the parent app.
+  /// Optional bottom navigation widget provided by the  parent app.
   /// If null, the screen will not build its own BottomNavigationBar.
   final Widget? bottomNavigationBar;
 
@@ -37,6 +38,8 @@ class _MapScreenState extends State<MapScreen> {
 
   final Map<MarkerId, Marker> _markers = {};
   List<Map<String, dynamic>> _nearbyServices = [];
+  Set<String> _activeTypes = {'hospital', 'police', 'gas_station'};
+  bool _isLoadingNearby = false;
 
   Timer? _debounce;
   List<Map<String, dynamic>> _placeSuggestions = [];
@@ -105,8 +108,10 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _loadNearbyServices(double lat, double lng) async {
     try {
+      _isLoadingNearby = true;
+      setState(() {});
       // Use Google Places Nearby Search to fetch real nearby emergency services
-      final types = ['hospital', 'police', 'gas_station'];
+      final types = _activeTypes.toList();
       final List<Map<String, dynamic>> aggregated = [];
 
       for (final t in types) {
@@ -138,11 +143,51 @@ class _MapScreenState extends State<MapScreen> {
 
       setState(() {
         _nearbyServices = list.take(12).map((s) => Map<String, dynamic>.from(s)).toList();
+        _isLoadingNearby = false;
       });
       _updateMarkers();
     } catch (e) {
       debugPrint('Error loading nearby services: $e');
+      if (mounted) {
+        final msg = e.toString();
+        // If the error looks like a legacy API activation issue, show a dialog with steps
+        if (msg.contains('LegacyApiNotActivatedMapError') || msg.toLowerCase().contains('legacy')) {
+          await showDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Places API Not Enabled'),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text('Your Google Cloud project does not have the newer Places API enabled.'),
+                    SizedBox(height: 8),
+                    Text('To fix:'),
+                    SizedBox(height: 6),
+                    Text('1) Open Google Cloud Console -> APIs & Services -> Library.'),
+                    Text('2) Enable "Places API" (the new Places API / Web Service).'),
+                    Text('3) Ensure billing is enabled for your project.'),
+                    SizedBox(height: 8),
+                    Text('After enabling the Places API, try again.'),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Places API error: ${e.toString()}\nCheck API key, Places API enabled, and billing.'),
+              duration: const Duration(seconds: 6),
+            ),
+          );
+        }
+      }
       // Fallback to sample data if Places API fails
+      _isLoadingNearby = false;
       _generateSampleNearbyServices(lat, lng);
     }
   }
@@ -241,10 +286,11 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _performPlacesAutocomplete(String input) async {
-    if (_kGooglePlacesApiKey == 'YOUR_GOOGLE_PLACES_API_KEY') return;
+    final key = await GooglePlacesService.resolvedApiKey();
+    if (key.isEmpty || key.startsWith('YOUR_GOOGLE_PLACES_API_KEY')) return;
     final url = Uri.https('maps.googleapis.com', '/maps/api/place/autocomplete/json', {
       'input': input,
-      'key': _kGooglePlacesApiKey,
+      'key': key,
       'types': 'establishment|geocode',
       'location': _currentPosition != null ? '${_currentPosition!.latitude},${_currentPosition!.longitude}' : null,
       'radius': '5000',
@@ -266,7 +312,8 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _selectSuggestion(Map<String, dynamic> suggestion) async {
     final placeId = suggestion['place_id'] as String?;
-    if (placeId == null || _kGooglePlacesApiKey == 'YOUR_GOOGLE_PLACES_API_KEY') {
+    final key = await GooglePlacesService.resolvedApiKey();
+    if (placeId == null || key.isEmpty || key.startsWith('YOUR_GOOGLE_PLACES_API_KEY')) {
       setState(() {
         _searchController.text = suggestion['description'] ?? '';
         _placeSuggestions = [];
@@ -276,7 +323,7 @@ class _MapScreenState extends State<MapScreen> {
 
     final url = Uri.https('maps.googleapis.com', '/maps/api/place/details/json', {
       'place_id': placeId,
-      'key': _kGooglePlacesApiKey,
+      'key': key,
       'fields': 'geometry,name,formatted_address',
     });
 
@@ -318,7 +365,7 @@ class _MapScreenState extends State<MapScreen> {
     return (d / 1000.0);
   }
 
-  Widget _buildBottomList() {
+  Widget _buildBottomList(double height) {
     final list = _nearbyServices
         .map((s) => {'data': s, 'distance': _distanceKmToService(s)})
         .toList();
@@ -326,7 +373,7 @@ class _MapScreenState extends State<MapScreen> {
     list.sort((a, b) => (a['distance'] as double).compareTo(b['distance'] as double));
 
     return SizedBox(
-      height: 140,
+      height: height,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -376,7 +423,7 @@ class _MapScreenState extends State<MapScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 4),
                     Row(
                       children: [
                         TextButton.icon(
@@ -412,6 +459,15 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Compute bottom panel placement to avoid overflow with system UI / bottom nav
+    final media = MediaQuery.of(context);
+    final double bottomPadding = media.padding.bottom;
+    // reserve space above the app's bottom navigation (approximate)
+    const double bottomNavApprox = 64.0;
+    final double _bottomListBottom = bottomPadding + bottomNavApprox + 8.0;
+    // Make bottom list height responsive to available screen height
+    final double availableH = media.size.height;
+    final double _bottomListHeight = math.min(160.0, availableH * 0.20);
     // UI layout: full screen map with overlay search and bottom list
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
@@ -480,6 +536,19 @@ class _MapScreenState extends State<MapScreen> {
                             });
                           },
                         ),
+                        if (kDebugMode)
+                          IconButton(
+                            icon: const Icon(Icons.api_outlined, color: Color(0xFF6B7280)),
+                            tooltip: 'Test Places API Key',
+                            onPressed: () async {
+                              final res = await GooglePlacesService.testApiKey(lat: _currentPosition?.latitude, lng: _currentPosition?.longitude);
+                              if (!mounted) return;
+                              final ok = res['ok'] == true;
+                              final status = res['status'] ?? '';
+                              final msg = res['message'] ?? '';
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Places API test: ${ok ? 'OK' : 'FAIL'} ($status) ${msg}')));
+                            },
+                          ),
                     ],
                   ),
                 ),
@@ -517,12 +586,110 @@ class _MapScreenState extends State<MapScreen> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 75, // above bottom navigation
+              bottom: _bottomListBottom,
               child: SizedBox(
-                height: 160,
+                height: _bottomListHeight,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: _buildBottomList(),
+                  child: Stack(
+                    children: [
+                      SafeArea(
+                        bottom: false,
+                        child: _buildBottomList(_bottomListHeight),
+                      ),
+                      if (_isLoadingNearby)
+                        Positioned.fill(
+                          child: Align(
+                            alignment: Alignment.center,
+                            child: Container(
+                              width: 160,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white70,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                                  SizedBox(width: 12),
+                                  Text('Loading nearby...', style: TextStyle(fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Type filter chips (hospital / police / petrol) - place to right, below suggestions if present
+            Positioned(
+              right: 14,
+              top: 72 + (_placeSuggestions.isNotEmpty ? math.min(_placeSuggestions.length * 56.0, 220.0) : 0.0),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 120, maxHeight: 260),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('All', style: TextStyle(fontSize: 12)),
+                        selected: _activeTypes.length == 3,
+                        onSelected: (v) {
+                          setState(() {
+                            if (v) {
+                              _activeTypes = {'hospital', 'police', 'gas_station'};
+                            }
+                          });
+                          if (_currentPosition != null) _loadNearbyServices(_currentPosition!.latitude, _currentPosition!.longitude);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      ChoiceChip(
+                        label: const Text('Hosp.', style: TextStyle(fontSize: 12)),
+                        selected: _activeTypes.contains('hospital'),
+                        onSelected: (v) {
+                          setState(() {
+                            if (v)
+                              _activeTypes.add('hospital');
+                            else
+                              _activeTypes.remove('hospital');
+                          });
+                          if (_currentPosition != null) _loadNearbyServices(_currentPosition!.latitude, _currentPosition!.longitude);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      ChoiceChip(
+                        label: const Text('Police', style: TextStyle(fontSize: 12)),
+                        selected: _activeTypes.contains('police'),
+                        onSelected: (v) {
+                          setState(() {
+                            if (v)
+                              _activeTypes.add('police');
+                            else
+                              _activeTypes.remove('police');
+                          });
+                          if (_currentPosition != null) _loadNearbyServices(_currentPosition!.latitude, _currentPosition!.longitude);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      ChoiceChip(
+                        label: const Text('Petrol', style: TextStyle(fontSize: 12)),
+                        selected: _activeTypes.contains('gas_station'),
+                        onSelected: (v) {
+                          setState(() {
+                            if (v)
+                              _activeTypes.add('gas_station');
+                            else
+                              _activeTypes.remove('gas_station');
+                          });
+                          if (_currentPosition != null) _loadNearbyServices(_currentPosition!.latitude, _currentPosition!.longitude);
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

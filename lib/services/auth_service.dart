@@ -258,6 +258,49 @@ class AuthService {
     }
   }
 
+  /// Request password reset / forgot password
+  /// Returns an AuthResult with success flag and message describing outcome.
+  static Future<AuthResult> forgotPassword(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/forgot-password'),
+        headers: ApiConfig.commonHeaders,
+        body: json.encode({'email': email}),
+      ).timeout(ApiConfig.requestTimeout);
+
+      final Map<String, dynamic> responseData = json.decode(response.body);
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        return AuthResult(success: true, message: responseData['message'] ?? 'If an account exists, a reset email has been sent.');
+      } else {
+        return AuthResult(success: false, message: responseData['message'] ?? 'Request failed');
+      }
+    } catch (e) {
+      return AuthResult(success: false, message: 'Network error: ${e.toString()}');
+    }
+  }
+
+  /// Reset password using OTP sent to email
+  static Future<AuthResult> resetPassword(String email, String otp, String newPassword) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/reset-password'),
+        headers: ApiConfig.commonHeaders,
+        body: json.encode({'email': email, 'otp': otp, 'password': newPassword}),
+      ).timeout(ApiConfig.requestTimeout);
+
+      final Map<String, dynamic> responseData = json.decode(response.body);
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        return AuthResult(success: true, message: responseData['message'] ?? 'Password updated');
+      } else {
+        return AuthResult(success: false, message: responseData['message'] ?? 'Reset failed');
+      }
+    } catch (e) {
+      return AuthResult(success: false, message: 'Network error: ${e.toString()}');
+    }
+  }
+
   /// Save auth data to secure storage
   static Future<void> _saveAuthData(String token, User user) async {
     final prefs = await SharedPreferences.getInstance();

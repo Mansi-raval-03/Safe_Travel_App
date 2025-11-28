@@ -26,6 +26,7 @@ import 'services/auto_location_sync_service.dart';
 import 'services/background_sync_worker.dart';
 import 'services/location_cache_manager.dart';
 import 'services/auto_sync_auth_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'config/api_config.dart';
 
 import 'services/integrated_offline_emergency_service.dart';
@@ -331,7 +332,7 @@ class _MainAppState extends State<MainApp> {
     });
   }
 
-  Future<void> _handleSignin(String email, String password) async {
+  Future<void> _handleSignin(String email, String password, bool rememberMe) async {
     // Clear any previous error and set loading state
     setState(() {
       _errorMessage = '';
@@ -346,6 +347,23 @@ class _MainAppState extends State<MainApp> {
         await AutoSyncAuthManager.instance.onLoginSuccess(result.user!, result.token!);
         
         // Navigation on success with loading cleared
+        // Save or clear remembered credentials based on user choice
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          if (rememberMe) {
+            await prefs.setBool('remember_me', true);
+            await prefs.setString('saved_email', email);
+            await prefs.setString('saved_password', password);
+          } else {
+            await prefs.remove('remember_me');
+            await prefs.remove('saved_email');
+            await prefs.remove('saved_password');
+          }
+        } catch (e) {
+          // non-fatal
+          print('Failed to persist remember-me: $e');
+        }
+
         setState(() {
           _user = result.user;
           _currentScreen = 2; // go to home (screen 2)
@@ -440,11 +458,15 @@ class _MainAppState extends State<MainApp> {
         setState(() {
           _errorMessage = result.message;
         });
+        // Propagate failure so callers can react (e.g., show UI feedback)
+        throw Exception(result.message);
       }
     } catch (e) {
       setState(() {
         _errorMessage = 'Profile update failed: ${e.toString()}';
       });
+      // Re-throw so callers (ProfileScreen) can show failure state
+      throw e;
     }
   }
 

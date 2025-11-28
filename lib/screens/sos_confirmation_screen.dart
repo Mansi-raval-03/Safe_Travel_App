@@ -387,28 +387,7 @@ class _SOSConfirmationScreenState extends State<SOSConfirmationScreen> {
                                       ),
                                     ),
                                   ),
-                                  SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 48,
-                                    child: OutlinedButton(
-                                      onPressed: _immediateSOS,
-                                      style: OutlinedButton.styleFrom(
-                                        side: BorderSide(color: Color(0xFFEF4444), width: 2),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'Immediate Emergency Alert',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFFEF4444),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                  // Immediate Emergency Alert button removed per UI update request
                                 ],
                               ),
                             ],

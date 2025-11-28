@@ -5,10 +5,13 @@ import '../services/offline_database_service.dart';
 import '../services/emergency_contact_service.dart';
 import '../services/fake_call_service.dart';
 import '../services/emergency_siren_service.dart';
+import '../services/direct_sos_service.dart';
+// emergency_contact_service already imported above
 import 'fake_call_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../utils/responsive.dart';
+import 'alert_notifications.dart';
 
 class HomeScreen extends StatefulWidget {
   final User? user;
@@ -36,6 +39,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final FakeCallService _fakeCallService = FakeCallService();
   final EmergencySirenService _sirenService = EmergencySirenService();
   bool _isSirenActive = false;
+
+  final DirectSOSService _directSOSService = DirectSOSService.instance;
 
   // Location/address state
   String _currentAddress = 'Fetching address...';
@@ -75,6 +80,114 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     // Load current location/address
     _fetchCurrentAddress();
+  }
+
+  /// Handle Share Location action: show contacts and send live location to selected contact
+  Future<void> _handleShareLocation() async {
+    // Load contacts (API first, fallback to local)
+    List<EmergencyContact> contacts = [];
+    try {
+      contacts = await EmergencyContactService.getAllContacts();
+    } catch (e) {
+      // Fallback to offline DB
+      try {
+        final dbService = OfflineDatabaseService.instance;
+        final local = await dbService.getCachedEmergencyContacts();
+        // `getCachedEmergencyContacts` already returns `List<EmergencyContact>`
+        contacts = local;
+      } catch (e2) {
+        print('Failed to load any emergency contacts: $e2');
+      }
+    }
+
+    if (contacts.isEmpty) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('No Contacts'),
+          content: const Text('No emergency contacts found. Please add contacts in Settings.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.onNavigate(6); // go to Settings
+              },
+              child: const Text('Add Contact'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Show bottom sheet with contacts
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: 12),
+              Container(width: 60, height: 6, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(3))),
+              SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  const Text('Share Live Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+                ]),
+              ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: contacts.length,
+                  separatorBuilder: (context, idx) => const Divider(height: 1),
+                  itemBuilder: (context, idx) {
+                    final c = contacts[idx];
+                    return ListTile(
+                      title: Text(c.name),
+                      subtitle: Text(c.phone),
+                      trailing: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.of(context).pop();
+                          // Send direct SOS-like live location message to selected contact
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sharing live location...')));
+                          try {
+                            final result = await _directSOSService.sendDirectSOS(contacts: [c], customMessage: 'Sharing my live location — please check in.');
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                            if (result['success'] == true) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location shared successfully')));
+                            } else {
+                              final err = (result['errors'] as List).join(', ');
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $err')));
+                            }
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Share failed: ${e.toString()}')));
+                          }
+                        },
+                        child: const Text('Send'),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   /// Fetch current location and address
@@ -278,9 +391,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'description': 'Share your current location',
         'icon': Icons.share_location,
         'color': const Color(0xFF10B981),
-        'action': () {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sharing location...')));
-        },
+        'action': _handleShareLocation,
       },
     ];
 
@@ -397,26 +508,60 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ),
                                         ],
                                       ),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.white.withOpacity(
-                                              0.2,
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // Settings button (first)
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                            ),
+                                            child: IconButton(
+                                              onPressed: () => widget.onNavigate(6),
+                                              icon: const Icon(
+                                                Icons.settings_rounded,
+                                                color: Colors.white,
+                                                size: 22,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        child: IconButton(
-                                          onPressed: () => widget.onNavigate(6),
-                                          icon: const Icon(
-                                            Icons.settings_rounded,
-                                            color: Colors.white,
-                                            size: 22 * 1.0,
+                                          SizedBox(width: 8 * _scale),
+                                          // Notification button (second) — opens side panel
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                            ),
+                                            child: IconButton(
+                                              onPressed: () {
+                                                showGeneralDialog(
+                                                  context: context,
+                                                  barrierLabel: 'Alerts',
+                                                  barrierDismissible: true,
+                                                  barrierColor: Colors.black54,
+                                                  transitionDuration: const Duration(milliseconds: 280),
+                                                  pageBuilder: (context, animation1, animation2) {
+                                                    // AlertNotifications widget aligns itself to the right and provides the panel UI
+                                                    return const AlertNotifications();
+                                                  },
+                                                  transitionBuilder: (context, animation, secondaryAnimation, child) {
+                                                    final curved = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+                                                    final offset = Tween<Offset>(begin: const Offset(1.0, 0.0), end: Offset.zero).animate(curved);
+                                                    return SlideTransition(position: offset, child: child);
+                                                  },
+                                                );
+                                              },
+                                              icon: const Icon(
+                                                Icons.notifications_active_outlined,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ),
                                     ],
                                   ),

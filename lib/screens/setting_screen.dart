@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_navigation.dart';
+import '../widgets/app_settings_tile.dart';
+import 'feedback_screen.dart';
 import '../services/auto_sync_auth_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -482,6 +484,14 @@ class _SettingsScreenState extends State<SettingsScreen>
       ),
       child: Column(
         children: [
+          // Feedback tile placed before About
+          AppSettingsTile(
+            icon: Icons.feedback_outlined,
+            title: 'Feedback',
+            subtitle: 'Tell us what we can improve',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FeedbackScreen())),
+          ),
+          const Divider(height: 1),
           Material(
             color: Colors.transparent,
             child: InkWell(
@@ -493,7 +503,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   ),
                 );
               },
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(

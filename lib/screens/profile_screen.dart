@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../utils/responsive.dart';
 import '../models/user.dart';
 import '../widgets/bottom_navigation.dart';
+import '../widgets/app_settings_tile.dart';
+import 'feedback_screen.dart';
 import '../services/emergency_contact_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final User? user;
-  final Function(User) onUpdateUser;
+  final Future<void> Function(User) onUpdateUser;
   final VoidCallback onSignout;
   final Function(int) onNavigate;
 
@@ -25,6 +27,9 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateMixin {
   bool _isEditing = false;
   Map<String, String> _errors = {};
+  bool _isSaving = false;
+  bool _saveSuccess = false;
+  bool _saveFailed = false;
   
   // Profile Image (placeholder for future implementation)
   String? _profileImageUrl;
@@ -37,6 +42,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   late TextEditingController _allergiesController;
   late TextEditingController _medicalConditionsController;
   late TextEditingController _emergencyContactsController;
+  late FocusNode _nameFocusNode;
   
   // Statistics from Database
   int _emergencyContactsCount = 0;
@@ -107,6 +113,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     _allergiesController = TextEditingController();
     _medicalConditionsController = TextEditingController();
     _emergencyContactsController = TextEditingController();
+    _nameFocusNode = FocusNode();
   }
   
   void _initializeAnimations() {
@@ -201,6 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     _allergiesController.dispose();
     _medicalConditionsController.dispose();
     _emergencyContactsController.dispose();
+    _nameFocusNode.dispose();
     
     super.dispose();
   }
@@ -208,18 +216,22 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   void _validateForm() {
     Map<String, String> newErrors = {};
 
+    String nameKey = _fieldKey('Full Name');
+    String emailKey = _fieldKey('Email');
+    String phoneKey = _fieldKey('Phone');
+
     if (_nameController.text.trim().isEmpty) {
-      newErrors['name'] = 'Name is required';
+      newErrors[nameKey] = 'Name is required';
     }
 
     if (_emailController.text.trim().isEmpty) {
-      newErrors['email'] = 'Email is required';
-    } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(_emailController.text)) {
-      newErrors['email'] = 'Email format is invalid';
+      newErrors[emailKey] = 'Email is required';
+    } else if (!RegExp(r'^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}\$').hasMatch(_emailController.text)) {
+      newErrors[emailKey] = 'Email format is invalid';
     }
 
     if (_phoneController.text.trim().isEmpty) {
-      newErrors['phone'] = 'Phone number is required';
+      newErrors[phoneKey] = 'Phone number is required';
     }
 
     if (mounted) {
@@ -229,19 +241,49 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     }
   }
 
-  void _saveProfile() {
+  Future<void> _saveProfile() async {
     _validateForm();
     if (_errors.isEmpty && widget.user != null) {
-      widget.onUpdateUser(
-        widget.user!.copyWith(
-          name: _nameController.text.trim(),
-          email: _emailController.text.trim(),
-          phone: _phoneController.text.trim(),
-        ),
+      final updated = widget.user!.copyWith(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
       );
-      if (mounted) {
+
+      setState(() {
+        _isSaving = true;
+        _saveSuccess = false;
+        _saveFailed = false;
+      });
+
+      try {
+        await widget.onUpdateUser(updated);
+        if (!mounted) return;
         setState(() {
+          _isSaving = false;
+          _saveSuccess = true;
           _isEditing = false;
+        });
+
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated')));
+
+        // Clear success indicator after short delay
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) setState(() => _saveSuccess = false);
+        });
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _isSaving = false;
+          _saveFailed = true;
+        });
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: ${e.toString()}')));
+
+        // Clear failure indicator after short delay
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) setState(() => _saveFailed = false);
         });
       }
     }
@@ -260,10 +302,27 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   }
 
   void _clearError(String field) {
-    if (_errors.containsKey(field) && mounted) {
+    final key = _fieldKey(field);
+    if (_errors.containsKey(key) && mounted) {
       setState(() {
-        _errors.remove(field);
+        _errors.remove(key);
       });
+    }
+  }
+
+  String _fieldKey(String label) => label.toLowerCase().replaceAll(' ', '');
+
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the user object changed, refresh the controllers so UI stays in sync
+    if (widget.user != null && widget.user != oldWidget.user) {
+      _nameController.text = widget.user!.name;
+      _emailController.text = widget.user!.email;
+      _phoneController.text = widget.user!.phone;
+      // Recalculate completeness in case backend returned updated data
+      _calculateProfileCompleteness();
+      if (mounted) setState(() {});
     }
   }
 
@@ -304,9 +363,11 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                             SizedBox(height: Responsive.s(context, 20)),
                             _buildEmergencyInfoCard(),
                             SizedBox(height: Responsive.s(context, 20)),
-                            _buildQuickActionsGrid(),
+                              _buildQuickActionsGrid(),
+                              SizedBox(height: Responsive.s(context, 20)),
+                              _buildProfileActionsCard(),
                             SizedBox(height: Responsive.s(context, 20)),
-                            _buildAboutSignOutCard(),
+                              _buildAboutSignOutCard(),
                             SizedBox(height: Responsive.s(context, 100)),
                           ],
                         ),
@@ -366,6 +427,10 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                 onPressed: () {
                   if (mounted) {
                     setState(() => _isEditing = true);
+                    // Request focus for name field after frame
+                    Future.delayed(Duration(milliseconds: 100), () {
+                      if (mounted) FocusScope.of(context).requestFocus(_nameFocusNode);
+                    });
                   }
                 },
                 icon: Icon(Icons.edit_outlined, color: Colors.white),
@@ -381,9 +446,17 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: IconButton(
-                    onPressed: _saveProfile,
-                    icon: Icon(Icons.check, color: Colors.white),
+                    onPressed: _isSaving ? null : _saveProfile,
                     tooltip: 'Save Changes',
+                    icon: _isSaving
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                          )
+                        : (_saveSuccess
+                            ? Icon(Icons.check, color: Colors.white)
+                            : (_saveFailed ? Icon(Icons.close, color: Colors.white) : Icon(Icons.check, color: Colors.white))),
                   ),
                 ),
                 SizedBox(width: 8),
@@ -842,8 +915,14 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   }
 
   Widget _buildEditTextField(String label, TextEditingController controller, IconData icon) {
+    final key = _fieldKey(label);
     return TextField(
       controller: controller,
+      focusNode: label == 'Full Name' ? _nameFocusNode : null,
+      keyboardType: label == 'Email'
+          ? TextInputType.emailAddress
+          : (label == 'Phone' ? TextInputType.phone : TextInputType.text),
+      textInputAction: TextInputAction.next,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: Color(0xFF6366F1)),
@@ -857,9 +936,9 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
         ),
         filled: true,
         fillColor: Colors.grey.shade50,
-        errorText: _errors[label.toLowerCase().replaceAll(' ', '')],
+        errorText: _errors[key],
       ),
-      onChanged: (value) => _clearError(label.toLowerCase().replaceAll(' ', '')),
+      onChanged: (value) => _clearError(label),
     );
   }
 
@@ -916,7 +995,91 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                 Color(0xFFF59E0B),
                 () => widget.onNavigate(6),
               ),
+              _buildActionCard(
+                'My Trips',
+                Icons.card_travel_outlined,
+                Color(0xFF3B82F6),
+                () => widget.onNavigate(12),
+              ),
+              _buildActionCard(
+                'Emergency Contacts',
+                Icons.phone_in_talk_outlined,
+                Color(0xFFEF4444),
+                () => widget.onNavigate(9),
+              ),
+              _buildActionCard(
+                'Invite Friends',
+                Icons.share_outlined,
+                Color(0xFF8B5CF6),
+                () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Invite Friends'),
+                      content: const Text('Share the app with friends via your preferred sharing app.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileActionsCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          AppSettingsTile(
+            icon: Icons.edit_outlined,
+            title: 'Edit Profile',
+            subtitle: 'Update your personal details',
+            onTap: () {
+              setState(() => _isEditing = true);
+              Future.delayed(const Duration(milliseconds: 100), () {
+                if (mounted) FocusScope.of(context).requestFocus(_nameFocusNode);
+              });
+            },
+          ),
+          const Divider(height: 1),
+          AppSettingsTile(
+            icon: Icons.lock_outline,
+            title: 'Change Password',
+            subtitle: 'Update your account password',
+            onTap: () {
+              // route to change password screen if exists
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Change Password not implemented')));
+            },
+          ),
+          const Divider(height: 1),
+          AppSettingsTile(
+            icon: Icons.phone_in_talk_outlined,
+            title: 'Emergency Contacts',
+            subtitle: 'Manage your emergency contacts',
+            onTap: () => widget.onNavigate(9),
+          ),
+          const Divider(height: 1),
+          AppSettingsTile(
+            icon: Icons.feedback_outlined,
+            title: 'Feedback',
+            subtitle: 'Tell us what we can improve',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FeedbackScreen())),
           ),
         ],
       ),
