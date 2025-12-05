@@ -4,10 +4,10 @@ import 'package:http/http.dart' as http;
 import '../models/place_model.dart';
 
 class GooglePlacesService {
-  // API key: prefer supplying via --dart-define=GOOGLE_PLACES_API_KEY=YOUR_KEY at build/run time.
+  // API key: prefer supplying via --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY at build/run time.
   // This reads the key at compile time from Dart environment variables. If not provided,
-  // the placeholder 'YOUR_GOOGLE_PLACES_API_KEY' will be used and requests will be skipped.
-  static const String apiKey = String.fromEnvironment('AIzaSyCthvrA0JDPHBJ5KCax_4nODlXxZLEnNFw', defaultValue: 'AIzaSyCthvrA0JDPHBJ5KCax_4nODlXxZLEnNFw');
+  // the code will attempt to read the manifest meta-data via platform channel.
+  static const String apiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY', defaultValue: '');
   static const MethodChannel _channel = MethodChannel('safe_travel_app/config');
 
   /// Resolve the effective API key to use for Places requests.
@@ -16,7 +16,7 @@ class GooglePlacesService {
   /// 2. Android manifest meta-data `com.google.android.geo.API_KEY` (via platform channel)
   /// 3. Fallback placeholder string (will cause REQUEST_DENIED from the API).
   static Future<String> resolvedApiKey() async {
-    if (apiKey.isNotEmpty && !apiKey.startsWith('AIzaSyCthvrA0JDPHBJ5KCax_4nODlXxZLEnNFw')) {
+    if (apiKey.isNotEmpty) {
       return apiKey;
     }
     try {

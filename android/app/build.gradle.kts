@@ -1,3 +1,5 @@
+import java.net.URI
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -34,6 +36,37 @@ android {
     targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Read Google Maps API key from (in order):
+        // 1) project property 'MAPS_API_KEY' (set via gradle -P),
+        // 2) environment variable 'GOOGLE_MAPS_API_KEY',
+        // 3) backend .env file at ../Safe_Travel_App_Backend/.env if present (parses the simple KEY=VALUE format).
+        val mapsApiKeyFromProp: String? = try { project.findProperty("MAPS_API_KEY") as String? } catch (e: Exception) { null }
+        val mapsApiKeyFromEnv: String? = System.getenv("GOOGLE_MAPS_API_KEY")
+        val backendEnvFile = rootProject.file("../Safe_Travel_App_Backend/.env")
+        val mapsApiKeyFromBackendEnv: String? = if (backendEnvFile.exists()) {
+            backendEnvFile.readText().lineSequence().map { it.trim() }
+                .firstOrNull { it.startsWith("GOOGLE_MAPS_API_KEY=") }
+                ?.substringAfter("=")
+                ?.trim()
+                ?.let { raw ->
+                    // If the value was a full Maps URL (e.g. https://maps.googleapis.com/...?key=XYZ&...),
+                    // extract the `key` query parameter. Otherwise return the raw value.
+                    if (raw.startsWith("http")) {
+                        try {
+                            val query = URI(raw).query ?: raw
+                            query.splitToSequence("&").map { it.trim() }
+                                .firstOrNull { it.startsWith("key=") }
+                                ?.substringAfter("key=")
+                                ?: raw
+                        } catch (e: Exception) {
+                            raw
+                        }
+                    } else raw
+                }
+        } else null
+
+        val resolvedMapsApiKey = mapsApiKeyFromProp ?: mapsApiKeyFromEnv ?: mapsApiKeyFromBackendEnv ?: ""
+        manifestPlaceholders["MAPS_API_KEY"] = resolvedMapsApiKey
     }
 
     buildTypes {

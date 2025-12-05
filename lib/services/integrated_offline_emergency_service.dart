@@ -20,8 +20,8 @@ class IntegratedOfflineEmergencyService {
   }
   IntegratedOfflineEmergencyService._();
 
-  late final OfflineDatabaseService _dbService;
-  late final LocationService _locationService;
+  OfflineDatabaseService? _dbService;
+  LocationService? _locationService;
   bool _initialized = false;
   Completer<void>? _initializingCompleter;
   
@@ -62,12 +62,12 @@ class IntegratedOfflineEmergencyService {
     try {
       print('🚀 Initializing Integrated Offline Emergency Service...');
 
-      // Initialize database service
-      _dbService = OfflineDatabaseService.instance;
-      await _dbService.database;
+      // Initialize database service (assign only if not already set)
+      _dbService ??= OfflineDatabaseService.instance;
+      await _dbService!.database;
 
-      // Initialize location service
-      _locationService = LocationService();
+      // Initialize location service (assign only if not already set)
+      _locationService ??= LocationService();
 
       // Start connectivity monitoring
       await _startConnectivityMonitoring();
@@ -130,7 +130,7 @@ class IntegratedOfflineEmergencyService {
   /// Add emergency contact offline
   Future<int> addEmergencyContact(OfflineEmergencyContact contact) async {
     try {
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       
       final contactId = await db.insert(
         OfflineDatabaseService.tableEmergencyContacts,
@@ -158,7 +158,7 @@ class IntegratedOfflineEmergencyService {
   /// Get all emergency contacts from offline storage
   Future<List<OfflineEmergencyContact>> getAllEmergencyContacts() async {
     try {
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       
       final List<Map<String, dynamic>> maps = await db.query(
         OfflineDatabaseService.tableEmergencyContacts,
@@ -177,7 +177,7 @@ class IntegratedOfflineEmergencyService {
   /// Update emergency contact
   Future<void> updateEmergencyContact(OfflineEmergencyContact contact) async {
     try {
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       
       await db.update(
         OfflineDatabaseService.tableEmergencyContacts,
@@ -207,7 +207,7 @@ class IntegratedOfflineEmergencyService {
   /// Delete emergency contact
   Future<void> deleteEmergencyContact(int contactId) async {
     try {
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       
       // Soft delete
       await db.update(
@@ -251,7 +251,7 @@ class IntegratedOfflineEmergencyService {
       // Get current location
       Position? position;
       try {
-        position = await _locationService.getCurrentLocation();
+        position = await _locationService!.getCurrentLocation();
         print('📍 Location acquired: ${position?.latitude}, ${position?.longitude}');
       } catch (e) {
         print('❌ Could not get location: $e');
@@ -270,7 +270,7 @@ class IntegratedOfflineEmergencyService {
       );
       
       // Store SOS alert in database
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       final sosId = await db.insert(
         OfflineDatabaseService.tableSOSAlerts,
         sosAlert.toMap(),
@@ -312,7 +312,7 @@ class IntegratedOfflineEmergencyService {
   /// Create pending shares for SOS alert
   Future<void> _createPendingShares(int sosId, List<OfflineEmergencyContact> contacts, OfflineSOSAlert sosAlert) async {
     try {
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       final batch = db.batch();
       
       for (final contact in contacts) {
@@ -392,7 +392,7 @@ This is an automated emergency message. Please respond immediately.
       updateCount++;
       
       try {
-        final position = await _locationService.getCurrentLocation();
+        final position = await _locationService!.getCurrentLocation();
         
         if (position != null) {
           // Store location update
@@ -438,7 +438,7 @@ SOS Alert ID: $sosId
   /// Store location update in database
   Future<void> _storeLocationUpdate(int sosId, Position position) async {
     try {
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       
       await db.insert(OfflineDatabaseService.tableLocations, {
         'latitude': position.latitude,
@@ -458,7 +458,7 @@ SOS Alert ID: $sosId
   /// Queue location updates for sharing
   Future<void> _queueLocationUpdates(List<OfflineEmergencyContact> contacts, String message) async {
     try {
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       final batch = db.batch();
       
       for (final contact in contacts) {
@@ -489,7 +489,7 @@ SOS Alert ID: $sosId
     if (!_isOnline) return;
     
     try {
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       
       // Get pending shares
       final pendingShares = await db.query(
@@ -542,7 +542,7 @@ SOS Alert ID: $sosId
       }
       
       // Update share status
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       await db.update(
         OfflineDatabaseService.tablePendingShares,
         {
@@ -574,7 +574,7 @@ SOS Alert ID: $sosId
       }
       
       // Update message status
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       if (success) {
         await db.delete(
           OfflineDatabaseService.tableOfflineMessages,
@@ -707,7 +707,7 @@ SOS Alert ID: $sosId
   /// Get all SOS alerts
   Future<List<OfflineSOSAlert>> getAllSOSAlerts() async {
     try {
-      final db = await _dbService.database;
+      final db = await _dbService!.database;
       
       final List<Map<String, dynamic>> maps = await db.query(
         OfflineDatabaseService.tableSOSAlerts,

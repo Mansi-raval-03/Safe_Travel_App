@@ -20,10 +20,12 @@
         android:label="Safe Travel"
         android:icon="@mipmap/ic_launcher">
         
-        <!-- Google Maps API Key -->
-        <meta-data 
-            android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao"/>
+           <!-- Google Maps API Key: value injected from Gradle manifest placeholder MAPS_API_KEY.
+               The build script attempts to read it from project properties, environment, or
+               from the backend .env at ../Safe_Travel_App_Backend/.env. -->
+           <meta-data
+              android:name="com.google.android.geo.API_KEY"
+              android:value="${MAPS_API_KEY}" />
             
         <activity
             android:name=".MainActivity"

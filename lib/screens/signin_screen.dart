@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../utils/responsive.dart';
 import '../services/fake_call_service.dart';
@@ -29,6 +30,8 @@ class _SigninScreenState extends State<SigninScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  bool _submitting = false; // local guard to avoid duplicate submits
+  Timer? _timeoutTimer;
   
   @override
   void initState() {
@@ -61,13 +64,67 @@ class _SigninScreenState extends State<SigninScreen> {
   bool _isSirenActive = false;
 
   void _handleSubmit() {
+    // Prevent duplicate parallel submissions
+    if (_submitting || widget.isLoading) return;
+
     // Validate form before submitting
     if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter email and password')));
       return;
     }
-    
+
+    // Start local submit guard and a timeout watchdog
+    setState(() {
+      _submitting = true;
+    });
+
     // Call signin with validation and pass remember-me flag
-    widget.onSignin(_emailController.text.trim(), _passwordController.text, _rememberMe);
+    try {
+      widget.onSignin(_emailController.text.trim(), _passwordController.text, _rememberMe);
+    } catch (e) {
+      // in case parent callback throws synchronously
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sign in failed: ${e.toString()}')));
+      return;
+    }
+
+    // Start a timeout; if the parent doesn't clear loading state, show a retry option.
+    _timeoutTimer?.cancel();
+    _timeoutTimer = Timer(const Duration(seconds: 12), () {
+      if (!mounted) return;
+      // If still showing loading (either parent isLoading or our local _submitting), show message
+      if (widget.isLoading || _submitting) {
+        setState(() {
+          _submitting = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Sign in is taking too long. Please try again.'),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () {
+                _handleSubmit();
+              },
+            ),
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant SigninScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If parent stopped loading, clear our local submitting flag and cancel timeout
+    if (oldWidget.isLoading && !widget.isLoading) {
+      if (_submitting) {
+        setState(() {
+          _submitting = false;
+        });
+      }
+      _timeoutTimer?.cancel();
+      _timeoutTimer = null;
+    }
   }
 
   /// Handle fake call button press
@@ -539,7 +596,7 @@ class _SigninScreenState extends State<SigninScreen> {
         ],
       ),
       child: ElevatedButton(
-        onPressed: widget.isLoading ? null : _handleSubmit,
+      onPressed: (widget.isLoading || _submitting) ? null : _handleSubmit,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF2563EB),
           foregroundColor: Colors.white,
@@ -549,7 +606,7 @@ class _SigninScreenState extends State<SigninScreen> {
           ),
           elevation: 0,
         ),
-        child: widget.isLoading
+        child: (widget.isLoading || _submitting)
             ? SizedBox(
                 height: Responsive.s(context, 20),
                 width: Responsive.s(context, 20),
@@ -690,6 +747,7 @@ class _SigninScreenState extends State<SigninScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _timeoutTimer?.cancel();
     super.dispose();
   }
 }

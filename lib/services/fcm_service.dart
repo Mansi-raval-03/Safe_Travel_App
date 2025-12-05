@@ -109,18 +109,15 @@ class FCMService {
       print('FCM foreground message: ${message.messageId}');
       // Show notification via flutter_local_notifications
       try {
-        final alert = _buildAlertFromRemoteMessage(message);
-        if (alert != null) await NotificationService.showEmergencyNotification(alert);
+          final alert = _buildAlertFromRemoteMessage(message);
+          if (alert != null) {
+            // 1) Post system notification
+            await NotificationService.showEmergencyNotification(alert);
+            // 2) Show in-app popup for immediate attention
+            NavigationService.showEmergencyDialog(alert);
+          }
       } catch (e) {
         print('Error showing local notification from FCM foreground: $e');
-      }
-
-      // If app is foreground show in-app popup for SOS data payloads
-      try {
-        final alert = _buildAlertFromRemoteMessage(message);
-        if (alert != null) NavigationService.showEmergencyDialog(alert);
-      } catch (e) {
-        print('Error showing emergency dialog from FCM foreground: $e');
       }
     });
 

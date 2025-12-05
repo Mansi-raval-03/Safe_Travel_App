@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:io' show File;
+import 'dart:io' show File, Platform;
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'services/navigation_service.dart';
 import 'services/notification_service.dart';
 import 'services/fcm_service.dart';
@@ -56,6 +57,20 @@ void main() async {
   }
 
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  // Initialize sqflite for desktop (Windows/Linux/macOS) when running in
+  // a desktop environment. This sets the `databaseFactory` used by
+  // `sqflite` to the ffi implementation so getDatabasesPath/openDatabase
+  // work on desktop.
+  try {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+      print('✅ sqflite_common_ffi initialized for desktop');
+    }
+  } catch (e) {
+    print('⚠️ sqflite_common_ffi initialization skipped or failed: $e');
+  }
   // Initialize notifications first so local notification channels are available
   try {
     await NotificationService.initialize();

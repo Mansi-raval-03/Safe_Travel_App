@@ -7,7 +7,7 @@ class NavigationService {
   /// Show an emergency dialog on top of the current UI using the global navigator.
   /// Expects an `alert` map containing at least `userName`, `message`, `latitude`, `longitude`.
   static Future<void> showEmergencyDialog(Map<String, dynamic> alert) async {
-    final ctx = navigatorKey.currentState?.context;
+    final ctx = navigatorKey.currentContext;
     if (ctx == null) return;
 
     final userName = alert['userName'] ?? alert['senderName'] ?? 'Unknown';
@@ -15,11 +15,8 @@ class NavigationService {
     final lat = alert['latitude'];
     final lng = alert['longitude'];
 
-    // Avoid showing multiple dialogs if modal is already up
-    if (ModalRoute.of(ctx)?.isCurrent != true && navigatorKey.currentState?.overlay == null) {
-      // still try to show, but guard to avoid throwing
-    }
-
+    // Show a dialog using the global navigator context. We intentionally
+    // avoid complex guards here so an incoming SOS reliably surfaces.
     showDialog(
       context: ctx,
       barrierDismissible: true,

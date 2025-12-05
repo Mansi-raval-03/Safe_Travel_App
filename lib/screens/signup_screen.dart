@@ -44,35 +44,39 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void _validateForm() {
     Map<String, String> newErrors = {};
 
-    if (_nameController.text.trim().isEmpty) {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text;
+    final confirm = _confirmPasswordController.text;
+
+    if (name.isEmpty) {
       newErrors['name'] = 'Name is required';
-    } else if (_nameController.text.trim().length < 2) {
+    } else if (name.length < 2) {
       newErrors['name'] = 'Name must be at least 2 characters';
-    } else if (_nameController.text.trim().length > 50) {
+    } else if (name.length > 50) {
       newErrors['name'] = 'Name must be less than 50 characters';
     }
 
-    if (_emailController.text.trim().isEmpty) {
+    if (email.isEmpty) {
       newErrors['email'] = 'Email is required';
-    } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-        .hasMatch(_emailController.text)) {
+    } else if (!RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
       newErrors['email'] = 'Email format is invalid';
     }
 
-    if (_phoneController.text.trim().isEmpty) {
+    if (phone.isEmpty) {
       newErrors['phone'] = 'Phone number is required';
-    } else if (!RegExp(r'^[\+]?[1-9][\d]{0,15}$')
-        .hasMatch(_phoneController.text.trim())) {
+    } else if (!RegExp(r'^[\+]?[1-9][0-9]{0,15}$').hasMatch(phone)) {
       newErrors['phone'] = 'Phone number format is invalid';
     }
 
-    if (_passwordController.text.isEmpty) {
+    if (password.isEmpty) {
       newErrors['password'] = 'Password is required';
-    } else if (_passwordController.text.length < 6) {
+    } else if (password.length < 6) {
       newErrors['password'] = 'Password must be at least 6 characters';
     }
 
-    if (_confirmPasswordController.text != _passwordController.text) {
+    if (confirm != password) {
       newErrors['confirmPassword'] = 'Passwords do not match';
     }
 
@@ -82,8 +86,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   void _handleSubmit() {
+    final valid = _formKey.currentState?.validate() ?? true;
     _validateForm();
-    if (_errors.isEmpty) {
+
+    if (valid && _errors.isEmpty && !widget.isLoading) {
       widget.onSignup(
         _nameController.text.trim(),
         _emailController.text.trim(),
@@ -104,7 +110,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true, // important for keyboard push
+      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -118,7 +124,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             children: [
               SizedBox(height: Responsive.s(context, 48)),
 
-              // Logo and Title
               Column(
                 children: [
                   Container(
@@ -163,7 +168,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               SizedBox(height: Responsive.s(context, 24)),
 
-              // Form with scrollable area
               Expanded(
                 child: Container(
                   decoration: const BoxDecoration(
@@ -175,14 +179,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   child: Padding(
                     padding: EdgeInsets.all(Responsive.s(context, 24)),
-                    child: SingleChildScrollView( // <-- FIX
+                    child: SingleChildScrollView(
                       child: Form(
                         key: _formKey,
                         child: Column(
                           children: [
                             SizedBox(height: Responsive.s(context, 16)),
 
-                            // Display error message if exists
                             if (widget.errorMessage.isNotEmpty)
                               Container(
                                 padding: EdgeInsets.all(Responsive.s(context, 12)),
@@ -194,8 +197,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.error_outline,
-                                        color: Colors.red.shade600, size: 20),
+                                    Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
                                     SizedBox(width: Responsive.s(context, 8)),
                                     Expanded(
                                       child: Text(
@@ -211,35 +213,63 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
 
                             _buildTextField(
-                              label: "Full Name",
+                              label: 'Full Name',
                               controller: _nameController,
                               error: _errors['name'],
                               onChanged: () => _clearError('name'),
+                              keyboardType: TextInputType.name,
+                              validator: (val) {
+                                final v = val?.trim() ?? '';
+                                if (v.isEmpty) return 'Name is required';
+                                if (v.length < 2) return 'Name must be at least 2 characters';
+                                if (v.length > 50) return 'Name must be less than 50 characters';
+                                return null;
+                              },
                             ),
                             SizedBox(height: Responsive.s(context, 16)),
 
                             _buildTextField(
-                              label: "Email",
+                              label: 'Email',
                               controller: _emailController,
                               error: _errors['email'],
                               onChanged: () => _clearError('email'),
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (val) {
+                                final v = val?.trim() ?? '';
+                                if (v.isEmpty) return 'Email is required';
+                                if (!RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return 'Email format is invalid';
+                                return null;
+                              },
                             ),
                             SizedBox(height: Responsive.s(context, 16)),
 
                             _buildTextField(
-                              label: "Phone Number",
+                              label: 'Phone Number',
                               controller: _phoneController,
                               error: _errors['phone'],
                               onChanged: () => _clearError('phone'),
+                              keyboardType: TextInputType.phone,
+                              validator: (val) {
+                                final v = val?.trim() ?? '';
+                                if (v.isEmpty) return 'Phone number is required';
+                                if (!RegExp(r'^[\+]?[1-9][0-9]{0,15}$').hasMatch(v)) return 'Phone number format is invalid';
+                                return null;
+                              },
                             ),
                             SizedBox(height: Responsive.s(context, 16)),
 
                             _buildTextField(
-                              label: "Password",
+                              label: 'Password',
                               controller: _passwordController,
                               error: _errors['password'],
                               obscureText: !_showPassword,
                               onChanged: () => _clearError('password'),
+                              validator: (val) {
+                                final v = val ?? '';
+                                if (v.isEmpty) return 'Password is required';
+                                if (v.length < 6) return 'Password must be at least 6 characters';
+                                return null;
+                              },
                               suffixIcon: IconButton(
                                 onPressed: () {
                                   setState(() {
@@ -247,9 +277,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   });
                                 },
                                 icon: Icon(
-                                  _showPassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
+                                  _showPassword ? Icons.visibility_off : Icons.visibility,
                                   color: Colors.grey.shade500,
                                 ),
                               ),
@@ -257,23 +285,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             const SizedBox(height: 16),
 
                             _buildTextField(
-                              label: "Confirm Password",
+                              label: 'Confirm Password',
                               controller: _confirmPasswordController,
                               error: _errors['confirmPassword'],
                               obscureText: !_showConfirmPassword,
-                              onChanged: () =>
-                                  _clearError('confirmPassword'),
+                              onChanged: () => _clearError('confirmPassword'),
+                              validator: (val) {
+                                final v = val ?? '';
+                                if (v != _passwordController.text) return 'Passwords do not match';
+                                return null;
+                              },
                               suffixIcon: IconButton(
                                 onPressed: () {
                                   setState(() {
-                                    _showConfirmPassword =
-                                        !_showConfirmPassword;
+                                    _showConfirmPassword = !_showConfirmPassword;
                                   });
                                 },
                                 icon: Icon(
-                                  _showConfirmPassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
+                                  _showConfirmPassword ? Icons.visibility_off : Icons.visibility,
                                   color: Colors.grey.shade500,
                                 ),
                               ),
@@ -285,21 +314,44 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               width: double.infinity,
                               height: Responsive.s(context, 48),
                               child: ElevatedButton(
-                                onPressed: _handleSubmit,
+                                onPressed: widget.isLoading ? null : _handleSubmit,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF3B82F6),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
                                   ),
                                 ),
-                                child: Text(
-                                  'Sign Up',
-                                  style: TextStyle(
-                                    fontSize: Responsive.s(context, 18),
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                                child: widget.isLoading
+                                    ? Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: Responsive.s(context, 18),
+                                            height: Responsive.s(context, 18),
+                                            child: const CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                            ),
+                                          ),
+                                          SizedBox(width: Responsive.s(context, 12)),
+                                          Text(
+                                            'Signing up...',
+                                            style: TextStyle(
+                                              fontSize: Responsive.s(context, 16),
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : Text(
+                                        'Sign Up',
+                                        style: TextStyle(
+                                          fontSize: Responsive.s(context, 18),
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                               ),
                             ),
                             SizedBox(height: Responsive.s(context, 16)),
@@ -348,6 +400,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     String? error,
     bool obscureText = false,
     VoidCallback? onChanged,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
     Widget? suffixIcon,
   }) {
     return Column(
@@ -365,11 +419,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         TextFormField(
           controller: controller,
           obscureText: obscureText,
+          keyboardType: keyboardType,
           onChanged: (_) => onChanged?.call(),
+          validator: validator,
           decoration: InputDecoration(
             hintText: 'Enter your $label',
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: Responsive.s(context, 16), vertical: Responsive.s(context, 16)),
+            contentPadding: EdgeInsets.symmetric(horizontal: Responsive.s(context, 16), vertical: Responsive.s(context, 16)),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(Responsive.s(context, 12)),
             ),

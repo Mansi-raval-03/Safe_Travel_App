@@ -1001,12 +1001,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
                 Color(0xFF3B82F6),
                 () => widget.onNavigate(12),
               ),
-              _buildActionCard(
-                'Emergency Contacts',
-                Icons.phone_in_talk_outlined,
-                Color(0xFFEF4444),
-                () => widget.onNavigate(9),
-              ),
+            
               _buildActionCard(
                 'Invite Friends',
                 Icons.share_outlined,

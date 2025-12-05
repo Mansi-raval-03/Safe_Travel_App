@@ -3,23 +3,28 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'navigation_service.dart';
 import '../screens/alert_map_screen.dart';
-import 'package:permission_handler/permission_handler.dart';
 
+/// NotificationService: wraps `flutter_local_notifications` and exposes
+/// helper methods for showing local notifications (SOS sent) and
+/// displaying incoming emergency notifications from the backend (FCM).
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
 
-  /// Initialize notification plugin and channels. Call early in app startup.
-  static Future<void> initialize() async {
-    // Request runtime notification permission on Android 13+ (POST_NOTIFICATIONS)
-    try {
-      await _requestNotificationPermission();
-    } catch (e) {
-      debugPrint('Notification permission request failed: $e');
-    }
+  // Android channel ids
+  static const String _emergencyChannelId = 'emergency_alerts';
+  static const String _emergencyChannelName = 'Emergency Alerts';
 
-    // Use the app launcher icon resource to avoid missing resource errors
+  /// Initialize the plugin and create channels. Call early in app startup.
+  static Future<void> initialize() async {
+    // Android initialization (use app launcher icon resource)
     const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    final DarwinInitializationSettings darwinInit = DarwinInitializationSettings();
+
+    // iOS / macOS initialization — request permissions on init
+    final DarwinInitializationSettings darwinInit = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
 
     final InitializationSettings settings = InitializationSettings(
       android: androidInit,
@@ -33,14 +38,13 @@ class NotificationService {
         try {
           if (response.payload != null && response.payload!.isNotEmpty) {
             final Map<String, dynamic> payload = jsonDecode(response.payload!);
-            // Navigate to alert map when notification tapped
-            NavigationService.navigatorKey.currentState?.push(MaterialPageRoute(
-              builder: (_) => AlertMapScreen(
-                latitude: (payload['latitude'] as num).toDouble(),
-                longitude: (payload['longitude'] as num).toDouble(),
-                senderName: payload['userName'] ?? payload['senderName'] ?? 'Unknown',
-              ),
-            ));
+            // Show same emergency dialog used for foreground messages
+            NavigationService.showEmergencyDialog({
+              'userName': payload['userName'] ?? payload['senderName'] ?? 'Unknown',
+              'message': payload['message'] ?? '',
+              'latitude': payload['latitude'],
+              'longitude': payload['longitude'],
+            });
           }
         } catch (e) {
           debugPrint('Notification response handling failed: $e');
@@ -49,10 +53,10 @@ class NotificationService {
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
-    // Create Android channel for emergency alerts
+    // Create Android channel
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'emergency_alerts',
-      'Emergency Alerts',
+      _emergencyChannelId,
+      _emergencyChannelName,
       description: 'High-priority emergency alerts (SOS)',
       importance: Importance.max,
       playSound: true,
@@ -60,11 +64,17 @@ class NotificationService {
       showBadge: true,
     );
 
-    await _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+    final androidImpl = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    // Request Android notifications permission on Android 13+ via plugin
+    try {
+      await androidImpl?.requestNotificationsPermission();
+    } catch (_) {}
+
+    await androidImpl?.createNotificationChannel(channel);
   }
 
-  /// Background-safe initialize used from FCM background handlers (runs in separate isolate)
+  /// Background-safe initialize used from FCM background handlers.
+  /// This runs in a background isolate, so keep work minimal.
   @pragma('vm:entry-point')
   static Future<void> initializeInBackground() async {
     try {
@@ -73,8 +83,8 @@ class NotificationService {
       await _plugin.initialize(settings);
 
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'emergency_alerts',
-        'Emergency Alerts',
+        _emergencyChannelId,
+        _emergencyChannelName,
         description: 'High-priority emergency alerts (SOS)',
         importance: Importance.max,
         playSound: true,
@@ -82,68 +92,88 @@ class NotificationService {
         showBadge: true,
       );
 
-      await _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
+      final androidImpl = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      try {
+        await androidImpl?.requestNotificationsPermission();
+      } catch (_) {}
+      await androidImpl?.createNotificationChannel(channel);
     } catch (e) {
       debugPrint('Background notification initialization failed: $e');
     }
   }
 
-  /// Request the platform notification permission (Android 13+: POST_NOTIFICATIONS)
-  static Future<bool> _requestNotificationPermission() async {
-    try {
-      // On Android below 13, this permission is not required and will be handled by the system.
-      final status = await Permission.notification.status;
-      if (status.isGranted) return true;
+  @pragma('vm:entry-point')
+  static void notificationTapBackground(NotificationResponse response) {
+    // Background tap handler — execution limited. Navigation will occur
+    // when the app resumes and the foreground handler runs.
+  }
 
-      final result = await Permission.notification.request();
-      if (result.isGranted) {
-        debugPrint('Notification permission granted');
-        return true;
-      } else if (result.isPermanentlyDenied) {
-        debugPrint('Notification permission permanently denied - user must enable in settings');
-        return false;
-      } else {
-        debugPrint('Notification permission denied');
-        return false;
-      }
+  /// Show a simple local notification to confirm the user's SOS was sent.
+  /// This should be called immediately after a successful SOS submission.
+  static Future<void> showSosSentNotification() async {
+    try {
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        _emergencyChannelId,
+        _emergencyChannelName,
+        channelDescription: 'High-priority emergency alerts (SOS)',
+        importance: Importance.max,
+        priority: Priority.high,
+        ticker: 'SOS Sent',
+        playSound: true,
+        enableVibration: true,
+        visibility: NotificationVisibility.public,
+      );
+
+      const DarwinNotificationDetails darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      const NotificationDetails details = NotificationDetails(android: androidDetails, iOS: darwinDetails);
+
+      await _plugin.show(
+        0, // id 0 reserved for SOS-sent confirmation
+        'SOS Sent',
+        'Your emergency SOS has been sent successfully.',
+        details,
+        payload: jsonEncode({'type': 'sos_sent'}),
+      );
     } catch (e) {
-      debugPrint('Error requesting notification permission: $e');
-      return false;
+      debugPrint('Failed to show SOS Sent notification: $e');
     }
   }
 
-  @pragma('vm:entry-point')
-  static void notificationTapBackground(NotificationResponse response) {
-    // This runs in background isolate when notification action is tapped
-    // We do not perform heavy work here; navigation will occur when app resumes.
-    // Keep as a VM entry point per plugin docs.
-  }
-
-  /// Show an emergency notification. Payload should contain latitude & longitude.
+  /// Show an incoming emergency notification (from FCM/backend).
+  /// `alert` may contain keys: userName, message, latitude, longitude
   static Future<void> showEmergencyNotification(Map<String, dynamic> alert) async {
     try {
       final title = 'SOS from ${alert['userName'] ?? alert['senderName'] ?? 'Unknown'}';
       final body = (alert['message'] ?? '').toString();
 
-      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-        'emergency_alerts',
-        'Emergency Alerts',
+      final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        _emergencyChannelId,
+        _emergencyChannelName,
         channelDescription: 'High-priority emergency alerts (SOS)',
         importance: Importance.max,
         priority: Priority.high,
         ticker: 'Emergency Alert',
         playSound: true,
         enableVibration: true,
-        fullScreenIntent: true,
-        ongoing: true,
+        visibility: NotificationVisibility.public,
       );
 
-      const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+      final DarwinNotificationDetails darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
 
-      // Pass payload so tapping notification can navigate
+      final NotificationDetails platformDetails = NotificationDetails(android: androidDetails, iOS: darwinDetails);
+
       final payload = jsonEncode({
         'userName': alert['userName'] ?? alert['senderName'],
+        'message': alert['message'] ?? '',
         'latitude': alert['latitude'],
         'longitude': alert['longitude'],
       });

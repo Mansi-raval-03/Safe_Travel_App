@@ -5,6 +5,7 @@
 *.pbxuser
 *.perspectivev3
 **/*sync/
+**/lib/services/google_places_service.dart/
 .sconsign.dblite
 .tags*
 **/.vagrant/
@@ -15,6 +16,7 @@ Icon?
 profile
 xcuserdata
 **/.generated/
+
 Flutter/App.framework
 Flutter/Flutter.framework
 Flutter/Flutter.podspec
