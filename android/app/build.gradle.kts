@@ -66,7 +66,7 @@ android {
         } else null
 
         val resolvedMapsApiKey = mapsApiKeyFromProp ?: mapsApiKeyFromEnv ?: mapsApiKeyFromBackendEnv ?: ""
-        manifestPlaceholders["MAPS_API_KEY"] = resolvedMapsApiKey
+        manifestPlaceholders["AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao"] = resolvedMapsApiKey
     }
 
     buildTypes {

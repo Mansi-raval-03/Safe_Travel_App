@@ -25,7 +25,7 @@
                from the backend .env at ../Safe_Travel_App_Backend/.env. -->
            <meta-data
               android:name="com.google.android.geo.API_KEY"
-              android:value="${MAPS_API_KEY}" />
+              android:value="AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao" />
             
         <activity
             android:name=".MainActivity"
